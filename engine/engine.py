@@ -8,7 +8,6 @@ TODO:
 from core.logger import LogLevel
 from core.log_src import src_engine, src_system
 
-
 class Engine:
     def __init__(self, rng, logger):
         self.time = 0.0
@@ -18,6 +17,7 @@ class Engine:
         self.rng = rng
         self.logger = logger
         self.network = None
+        self._events = []
 
     def set_event_queue(self, queue):
         self.queue = queue
@@ -91,11 +91,17 @@ class Engine:
             raise ValueError("Cannot schedule event in the past")
 
         self.queue.push(event)
-
-        # delegate logging decision to logger
         self.logger.log_event_scheduled(event.type, event.time)
+        
+    def emit(self, event: dict):
+        self._events.append(event)
 
-    def run(self, until=float("inf")):
+    def flush_events(self):
+        ev = self._events
+        self._events = []
+        return ev
+
+    def run(self, until=float("inf"), on_event=None):
         self.logger.log(
             LogLevel.INFO,
             src_system(),
@@ -139,7 +145,10 @@ class Engine:
                     error=str(e)
                 )
                 raise
-
+            
+            if on_event is not None:
+                on_event(self)
+                
             self.logger.log(
                 LogLevel.DEBUG,
                 src_engine(),

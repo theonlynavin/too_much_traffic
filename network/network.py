@@ -53,6 +53,16 @@ class Network:
 
         return [self.roads[rid] for rid in junction.incoming]
 
+    def node_position(self, node_id):
+        if node_id in self.junctions:
+            return self.junctions[node_id].pos
+        if node_id in self.sources:
+            return self.sources[node_id].pos
+        if node_id in self.sinks:
+            return self.sinks[node_id].pos
+
+        raise ValueError(f"Unknown node {node_id}")
+
     # ------------------------
 
     def build(self, engine):

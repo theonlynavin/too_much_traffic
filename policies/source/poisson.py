@@ -12,7 +12,7 @@ class PoissonSourcePolicy:
         self.vehicle_factory = vehicle_factory
 
     def next_interarrival(self, engine):
-        return engine.rng.exponential(self.rate)
+        return engine.rng.exponential(1.0 / self.rate)
 
     def create_vehicle(self, engine, source, counter):
         return self.vehicle_factory.create(engine, source, counter)

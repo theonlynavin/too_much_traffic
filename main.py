@@ -1,8 +1,9 @@
 """
 Notes:
-- Runs simulation
-- Captures timeline
-- Plays matplotlib animation
+- Snapshot-based pipeline
+- Engine emits events
+- Timeline stores snapshots
+- Visualization consumes timeline
 """
 
 from core.rng import RNG
@@ -11,7 +12,6 @@ from core.log_src import src_system
 
 from engine.engine import Engine
 from engine.event_queue import EventQueue
-
 from network.network import Network
 
 from components.road import Road
@@ -21,6 +21,7 @@ from components.sink import Sink
 
 from policies.source.poisson import PoissonSourcePolicy
 from policies.travel_time.congestion import CongestionPolicy
+from policies.travel_time.free_flow import FreeFlowPolicy
 from policies.routing.fixed import FixedRoutingPolicy
 from policies.lane.least_loaded import LeastLoadedLanePolicy
 
@@ -28,8 +29,7 @@ from factories.vehicle.fixed import FixedVehicleFactory
 
 from events.spawn import SpawnEvent
 
-from visualization.timeline import Timeline
-from visualization.capture import capture_state
+from visualization.timeline import Timeline, Snapshot, build_snapshot
 from visualization.animation.matplotlib_anim import MatplotlibAnimator
 
 
@@ -39,7 +39,7 @@ def build_engine():
     rng = RNG(seed=42)
 
     logger = Logger(
-        min_level=LogLevel.INFO,   # keep logs quiet for animation
+        min_level=LogLevel.ERROR,
         console_level=LogLevel.INFO,
         file_path=None
     )
@@ -55,6 +55,15 @@ def build_engine():
 def setup(engine):
     net = Network()
 
+    # --- Nodes ---
+    src = Source("S", road_id="r1", policy_id="poisson", pos=(0, 0))
+    j   = Junction("J", incoming=["r1"], outgoing=["r2"], pos=(20, 0))
+    sink = Sink("K", pos=(25, 25))
+
+    net.add_source(src)
+    net.add_junction(j)
+    net.add_sink(sink)
+
     # --- Roads ---
     r1 = Road("r1", start="S", end="J", length=10, capacity=10, num_lanes=2)
     r2 = Road("r2", start="J", end="K", length=10, capacity=2, num_lanes=1)
@@ -62,17 +71,7 @@ def setup(engine):
     net.add_road(r1)
     net.add_road(r2)
 
-    # --- Junction ---
-    j = Junction("J", incoming=["r1"], outgoing=["r2"], pos=(12, 10))
-    net.add_junction(j)
-
-    # --- Source / Sink ---
-    src = Source("S", road_id="r1", policy_id="poisson", pos=(0, 0))
-    sink = Sink("K", pos=(12, 20))
-
-    net.add_source(src)
-    net.add_sink(sink)
-
+    # --- Build ---
     net.build(engine)
     engine.set_network(net)
 
@@ -80,6 +79,7 @@ def setup(engine):
     factory = FixedVehicleFactory(
         size=1,
         destination="K",
+        kind="car",
         speed=5.0
     )
 
@@ -90,36 +90,25 @@ def setup(engine):
 
     engine.add_policy("routing", FixedRoutingPolicy())
     engine.add_policy("lane", LeastLoadedLanePolicy())
-    engine.add_policy("travel_time", CongestionPolicy(alpha=1.0))
-
-
-# ------------------------
-
-def run_with_timeline(engine, until=30.0):
-    timeline = Timeline()
-
-    while not engine.queue.is_empty():
-        event = engine.queue.pop()
-
-        if event.time > until:
-            break
-
-        engine.time = event.time
-        engine.logger.set_time(engine.time)
-
-        event.process(engine)
-
-        # capture AFTER processing event
-        state = capture_state(engine)
-        timeline.add(engine.time, state)
-
-    return timeline
+    engine.add_policy("travel_time", FreeFlowPolicy())
 
 
 # ------------------------
 
 def seed(engine):
     engine.schedule(SpawnEvent(0.0, "S", 0))
+
+
+# ------------------------
+
+def run(engine, until=10.0):
+    timeline = Timeline()
+
+    def capture(engine):
+        timeline.add(build_snapshot(engine))
+
+    engine.run(until=until, on_event=capture)
+    return timeline
 
 
 # ------------------------
@@ -132,12 +121,11 @@ def main():
     setup(engine)
     seed(engine)
 
-    timeline = run_with_timeline(engine, until=30.0)
+    timeline = run(engine, until=30)
 
     engine.logger.log(LogLevel.INFO, src_system(), "simulation_done")
 
-    # --- Animation ---
-    animator = MatplotlibAnimator(timeline)
+    animator = MatplotlibAnimator(timeline, engine.network)
     animator.animate(interval=200)
 
 

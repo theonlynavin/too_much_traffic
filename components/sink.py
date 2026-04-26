@@ -22,7 +22,7 @@ class Sink:
             "id": self.id,
             "received": self.received,
             "received_ids": list(self.received_ids),
-            "pos": pos
+            "pos": self.pos
         }
 
     @classmethod

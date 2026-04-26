@@ -31,6 +31,8 @@ class Road:
         self.num_lanes = num_lanes
 
         self.lanes = [deque() for _ in range(num_lanes)]
+        self.waiting = set()
+        self.pending_move = set()
         self.load = 0
 
     def has_space_for(self, size: int) -> bool:
@@ -71,7 +73,9 @@ class Road:
             "capacity": self.capacity,
             "num_lanes": self.num_lanes,
             "lanes": [list(q) for q in self.lanes],
-            "load": self.load
+            "load": self.load,
+            "waiting": list(self.waiting),
+            "pending_move": list(self.pending_move),
         }
 
     @classmethod
@@ -84,6 +88,8 @@ class Road:
             data["capacity"],
             data["num_lanes"]
         )
+        obj.waiting = set(data.get("waiting", []))
+        obj.pending_move = set(data.get("pending_move", []))
         obj.lanes = [deque(q) for q in data.get("lanes", [])]
         obj.load = data.get("load", 0)
         return obj

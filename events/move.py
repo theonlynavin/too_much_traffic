@@ -10,7 +10,6 @@ from core.event import Event
 from core.logger import LogLevel
 from core.log_src import src_event
 
-
 class MoveEvent(Event):
     type = "move_event"
 
@@ -21,10 +20,19 @@ class MoveEvent(Event):
         self.lane = lane
 
     def process(self, engine):
-        vehicle = self._get_vehicle(engine)
         road = engine.components[self.road_id]
+        road.pending_move.discard(self.vehicle_id)
+        
+        vehicle = self._get_vehicle(engine)
+        if vehicle is None:
+            return # stale event, vehicle already exited
 
         if not road.is_front(self.vehicle_id, self.lane):
+            engine.emit({
+                "type": "blocked",
+                "vehicle_id": vehicle.id,
+                "road_id": road.id
+            })
             return
 
         if road.end == vehicle.destination:
@@ -44,13 +52,13 @@ class MoveEvent(Event):
     def _get_vehicle(self, engine):
         if self.vehicle_id not in engine.components:
             engine.logger.log(
-                LogLevel.ERROR,
+                LogLevel.WARN,
                 src_event(self.type),
-                "unknown_vehicle",
+                "stale_move_event",
                 vehicle_id=self.vehicle_id,
                 road_id=self.road_id
             )
-            raise ValueError("Unknown vehicle")
+            return None
         return engine.components[self.vehicle_id]
 
     # ------------------------
@@ -74,6 +82,8 @@ class MoveEvent(Event):
     # ------------------------
 
     def _exit(self, engine, vehicle, road):
+        engine.emit({"type": "unblocked", "vehicle_id": vehicle.id})
+
         road.remove_vehicle(vehicle, self.lane)
         self._trigger_next(engine, road)
 
@@ -81,6 +91,11 @@ class MoveEvent(Event):
         prev = sink.received
         sink.record(vehicle.id)
 
+        engine.emit({
+            "type": "exit",
+            "vehicle_id": vehicle.id,
+            "sink_id": sink.id
+        })
         engine.logger.log(
             LogLevel.INFO,
             src_event(self.type),
@@ -95,19 +110,21 @@ class MoveEvent(Event):
     # ------------------------
 
     def _move(self, engine, vehicle, road, next_road):
+        engine.emit({"type": "unblocked", "vehicle_id": vehicle.id})
+        next_road.waiting.discard(vehicle.id)
+        
         road.remove_vehicle(vehicle, self.lane)
         self._trigger_next(engine, road)
 
         lane_policy = engine.policies["lane"]
         new_lane = lane_policy.choose_lane(engine, next_road, vehicle)
 
-        next_road.add_vehicle(vehicle, new_lane)
-
         tt = engine.policies["travel_time"].compute(engine, next_road, vehicle)
 
-        engine.schedule(
-            MoveEvent(engine.time + tt, vehicle.id, next_road.id, new_lane)
-        )
+        next_road.add_vehicle(vehicle, new_lane)
+        move_event = MoveEvent(engine.time + tt, vehicle.id, next_road.id, new_lane)
+        next_road.pending_move.add(vehicle.id)
+        engine.schedule(move_event)
 
         engine.logger.log(
             LogLevel.INFO,
@@ -123,6 +140,12 @@ class MoveEvent(Event):
     # ------------------------
 
     def _log_block(self, engine, vehicle, road, next_road):
+        next_road.waiting.add(vehicle.id)
+        engine.emit({
+            "type": "blocked",
+            "vehicle_id": vehicle.id,
+            "road_id": road.id
+        })
         engine.logger.log(
             LogLevel.WARN,
             src_event(self.type),
@@ -136,16 +159,17 @@ class MoveEvent(Event):
     # ------------------------
 
     def _trigger_next(self, engine, road):
-        """
-        Local + upstream retry
-        """
-        
+        # Same-lane retry: schedule the new front vehicle if it doesn't
+        # already have a pending move for this road.
         lane_q = road.lanes[self.lane]
         if lane_q:
-            engine.schedule(
-                MoveEvent(engine.time, lane_q[0], road.id, self.lane)
-            )
+            vid = lane_q[0]
+            if vid not in road.pending_move:
+                road.pending_move.add(vid)
+                engine.schedule(MoveEvent(engine.time, vid, road.id, self.lane))
 
+        # Upstream retry: only vehicles explicitly recorded as waiting on
+        # this road (i.e. blocked because this road was full).
         network = engine.network
         if network is None:
             engine.logger.log(
@@ -153,22 +177,22 @@ class MoveEvent(Event):
                 src_event(self.type),
                 "network_missing",
                 vehicle_id=self.vehicle_id,
-                road_id=self.road_id,
-                available_attrs=list(vars(engine).keys())
+                road_id=self.road_id
             )
             raise RuntimeError("Network not set on engine")
-        
+
         upstream = network.upstream_roads(road.id)
         for up_road in upstream:
             for lane_id, q in enumerate(up_road.lanes):
                 if not q:
                     continue
-
                 vid = q[0]
-
-                engine.schedule(
-                    MoveEvent(engine.time, vid, up_road.id, lane_id)
-                )
+                if vid not in road.waiting:
+                    continue
+                road.waiting.discard(vid)
+                if vid not in up_road.pending_move:
+                    up_road.pending_move.add(vid)
+                    engine.schedule(MoveEvent(engine.time, vid, up_road.id, lane_id))
 
     # ------------------------
 

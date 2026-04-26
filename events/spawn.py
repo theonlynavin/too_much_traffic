@@ -42,8 +42,18 @@ class SpawnEvent(Event):
             lane_policy = engine.policies["lane"]
             lane = lane_policy.choose_lane(engine, road, vehicle)
 
-            road.add_vehicle(vehicle, lane)
+            time_policy = engine.policies["travel_time"]
+            travel_time = time_policy.compute(engine, road, vehicle)
+
             engine.add_component(vehicle)
+            road.add_vehicle(vehicle, lane)
+            road.pending_move.add(vehicle.id)
+
+            engine.emit({
+                "type": "spawn",
+                "vehicle_id": vid,
+                "road_id": road.id
+            })
 
             engine.logger.log(
                 LogLevel.INFO,
@@ -53,14 +63,11 @@ class SpawnEvent(Event):
                 source_id=source.id,
                 road_id=road.id,
                 lane=lane,
+                kind=vehicle.kind,
                 size=vehicle.size,
                 destination=vehicle.destination,
                 cause="arrival"
             )
-
-            time_policy = engine.policies["travel_time"]
-            travel_time = time_policy.compute(engine, road, vehicle)
-
             engine.schedule(
                 MoveEvent(
                     engine.time + travel_time,
@@ -69,7 +76,13 @@ class SpawnEvent(Event):
                     lane
                 )
             )
+            road.pending_move.add(vehicle.id)
         else:
+            engine.emit({
+                "type": "spawn_dropped",
+                "vehicle_id": vid,
+                "road_id": road.id
+            })
             engine.logger.log(
                 LogLevel.WARN,
                 src_event(self.type),
@@ -77,6 +90,7 @@ class SpawnEvent(Event):
                 vehicle_id=vid,
                 source_id=source.id,
                 road_id=road.id,
+                kind=vehicle.kind,
                 size=vehicle.size,
                 reason="capacity_full"
             )
