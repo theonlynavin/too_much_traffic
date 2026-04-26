@@ -1,11 +1,8 @@
-"""
-Notes:
-- Delegates vehicle creation to source policy
-"""
 from core.event import Event
 from core.logger import LogLevel
 from core.log_src import src_event
 from events.move import MoveEvent
+
 
 class SpawnEvent(Event):
     type = "spawn_event"
@@ -30,7 +27,8 @@ class SpawnEvent(Event):
         vid = vehicle.id
 
         if road.has_space_for(vehicle.size):
-            if "lane" not in engine.policies:
+            lane_policy = engine.policies.get("lane")
+            if lane_policy is None:
                 engine.logger.log(
                     LogLevel.ERROR,
                     src_event(self.type),
@@ -38,8 +36,7 @@ class SpawnEvent(Event):
                     available_policies=list(engine.policies.keys())
                 )
                 raise RuntimeError("Lane policy not set")
-            
-            lane_policy = engine.policies["lane"]
+
             lane = lane_policy.choose_lane(engine, road, vehicle)
 
             time_policy = engine.policies["travel_time"]
@@ -47,14 +44,20 @@ class SpawnEvent(Event):
 
             engine.add_component(vehicle)
             road.add_vehicle(vehicle, lane)
-            road.pending_move.add(vehicle.id)
+            
+            t0 = engine.time
+            t1 = engine.time + travel_time
 
             engine.emit({
-                "type": "spawn",
+                "type": "segment",
                 "vehicle_id": vid,
-                "road_id": road.id
+                "road_id": road.id,
+                "destination": vehicle.destination,
+                "lane": lane,
+                "t_start": t0,
+                "t_end": t1
             })
-
+            
             engine.logger.log(
                 LogLevel.INFO,
                 src_event(self.type),
@@ -68,21 +71,17 @@ class SpawnEvent(Event):
                 destination=vehicle.destination,
                 cause="arrival"
             )
+
             engine.schedule(
                 MoveEvent(
                     engine.time + travel_time,
-                    vehicle.id,
+                    vid,
                     road.id,
                     lane
                 )
             )
-            road.pending_move.add(vehicle.id)
+
         else:
-            engine.emit({
-                "type": "spawn_dropped",
-                "vehicle_id": vid,
-                "road_id": road.id
-            })
             engine.logger.log(
                 LogLevel.WARN,
                 src_event(self.type),

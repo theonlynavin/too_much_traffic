@@ -1,9 +1,11 @@
+from .base import SourcePolicy
+
 """
 Notes:
 - Deterministic interarrival process
 - Delegates vehicle creation to factory
 """
-class ConstantSourcePolicy:
+class ConstantSourcePolicy(SourcePolicy):
     def __init__(self, rate: float, vehicle_factory):
         if rate <= 0:
             raise ValueError("rate must be positive")

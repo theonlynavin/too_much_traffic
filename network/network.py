@@ -1,5 +1,6 @@
 from core.logger import Logger, LogLevel
 from core.log_src import src_system
+import heapq
 
 """
 Notes:
@@ -52,6 +53,25 @@ class Network:
             return []
 
         return [self.roads[rid] for rid in junction.incoming]
+    
+    def next_road(self, current_node, destination):
+        key = (current_node, destination)
+
+        rid = self.routing_table.get(key)
+
+        if rid is None:
+            return None
+
+        road = self.roads.get(rid)
+        if road is None:
+            raise RuntimeError(f"Routing table returned invalid road: {rid}")
+
+        if road.start != current_node:
+            raise RuntimeError(
+                f"Routing inconsistency: {road.start} != {current_node}"
+            )
+
+        return rid
 
     def node_position(self, node_id):
         if node_id in self.junctions:
@@ -62,6 +82,46 @@ class Network:
             return self.sinks[node_id].pos
 
         raise ValueError(f"Unknown node {node_id}")
+    
+    # ------------------------
+    
+    def _dijkstra_to(self, destination_id):
+        dist = {destination_id: 0.0}
+        prev = {}
+
+        heap = [(0.0, destination_id)]
+
+        while heap:
+            d, node = heapq.heappop(heap)
+
+            if d > dist[node]:
+                continue
+
+            for road in self._incoming_to_node(node):
+                u = road.start
+                w = road.length
+                nd = d + w
+
+                if u not in dist or nd < dist[u]:
+                    dist[u] = nd
+                    prev[u] = road.id
+                    heapq.heappush(heap, (nd, u))
+
+        return prev
+    
+    def _incoming_to_node(self, node_id):
+        roads = []
+
+        if node_id in self.junctions:
+            for rid in self.junctions[node_id].incoming:
+                roads.append(self.roads[rid])
+
+        elif node_id in self.sinks:
+            for road in self.roads.values():
+                if road.end == node_id:
+                    roads.append(road)
+
+        return roads
 
     # ------------------------
 
@@ -80,6 +140,8 @@ class Network:
 
         for s in self.sinks.values():
             engine.add_component(s)
+            
+        self.build_routing_tables() 
         
         engine.set_network(self)
             
@@ -92,3 +154,13 @@ class Network:
             sources=len(self.sources),
             sinks=len(self.sinks)
         )
+        
+    def build_routing_tables(self):
+        self.routing_table = {}
+
+        for sink_id in self.sinks:
+            prev = self._dijkstra_to(sink_id)
+
+            for node_id, road_id in prev.items():
+                self.routing_table[(node_id, sink_id)] = road_id
+        

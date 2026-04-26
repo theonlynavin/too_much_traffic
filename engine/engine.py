@@ -17,7 +17,7 @@ class Engine:
         self.rng = rng
         self.logger = logger
         self.network = None
-        self._events = []
+        self.listeners = []
 
     def set_event_queue(self, queue):
         self.queue = queue
@@ -94,14 +94,10 @@ class Engine:
         self.logger.log_event_scheduled(event.type, event.time)
         
     def emit(self, event: dict):
-        self._events.append(event)
+        for l in self.listeners:
+            l.on_event(self.time, event)
 
-    def flush_events(self):
-        ev = self._events
-        self._events = []
-        return ev
-
-    def run(self, until=float("inf"), on_event=None):
+    def run(self, until=float("inf")):
         self.logger.log(
             LogLevel.INFO,
             src_system(),
@@ -145,10 +141,7 @@ class Engine:
                     error=str(e)
                 )
                 raise
-            
-            if on_event is not None:
-                on_event(self)
-                
+
             self.logger.log(
                 LogLevel.DEBUG,
                 src_engine(),
