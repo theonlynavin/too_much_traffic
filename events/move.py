@@ -2,11 +2,6 @@
 Notes:
 - Core logic for vehicle movement and junction transfers
 - Handles routing, lane selection, and exit logic
-
-TODO:
-- FLAG: Encapsulation violation - directly modifying vehicle.arrival_time and vehicle.travel_end_time.
-- FLAG: Internal time tracking - using vehicle fields for simulation timing.
-- FLAG: Complex process method - consider delegating logic to a TransferPolicy.
 """
 from core.event import Event
 from core.logger import LogLevel

@@ -2,10 +2,6 @@
 Notes:
 - Connection point for multiple roads
 - Buffers vehicles waiting to transfer between roads
-
-TODO:
-- FLAG: Active logic in enqueue/peek/pop. Components should be passive data containers.
-- FLAG: Implicit behavior - MoveEvent directly manipulates junction queues.
 """
 
 class Junction:

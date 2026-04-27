@@ -2,10 +2,6 @@
 Notes:
 - Passive container for road state (lanes, load)
 - Multi-lane FIFO structure
-
-TODO:
-- FLAG: Active logic in add_vehicle/remove_vehicle (validation and state management). Components should be passive.
-- FLAG: Encapsulation violation - MoveEvent reaches into road.lanes to check front.
 """
 
 class Road:

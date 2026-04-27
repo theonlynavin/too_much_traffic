@@ -1,11 +1,7 @@
 """
 Notes:
 - End point for vehicles
-- Records vehicle exits and total throughput
-
-TODO:
-- Track per-vehicle exit times
-- Add throughput statistics
+- Termination logic is handled by policies/events, not the component itself
 """
 
 class Sink:

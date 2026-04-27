@@ -2,10 +2,6 @@
 Notes:
 - Passive data container for vehicle properties
 - Speed and size are used by policies to compute traversal and capacity
-
-TODO:
-- FLAG: Internal time tracking (arrival_time, travel_end_time) violates "No internal time tracking" rule.
-- FLAG: No hidden state - arrival_time and travel_end_time are being modified externally by events.
 """
 class Vehicle:
     def __init__(self, vid: str, source: str, destination: str, kind : str, size: int, speed: float):

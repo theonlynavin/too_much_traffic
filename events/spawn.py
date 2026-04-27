@@ -4,7 +4,6 @@ Notes:
 - Computes initial travel time and schedules first move
 
 TODO:
-- FLAG: Encapsulation violation - directly setting vehicle.travel_end_time.
 - FLAG: Missing from_dict implementation.
 - Consider moving spawning logic to a dedicated Spawner component.
 """

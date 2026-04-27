@@ -2,10 +2,6 @@
 Notes:
 - Entry point for vehicles
 - Generation logic is handled by policies/events, not the component itself
-
-TODO:
-- Support stochastic generation (Poisson)
-- Add vehicle template (default destination, type)
 """
 
 class Source:
