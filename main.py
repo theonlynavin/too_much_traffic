@@ -4,7 +4,6 @@ Notes:
 - Orchestrates engine setup, network building, and visualization
 
 TODO:
-- FLAG: setup() function is too long (exceeds 40-line limit).
 - Move manual network setup to a JSON configuration or dedicated factory.
 """
 from core.rng import RNG
@@ -50,9 +49,9 @@ def build_engine():
 def setup(engine):
     net = Network()
 
-    S0 = Source("S0", junction_id="J0", policy_id="poisson", pos=(0, 10))
-    S1 = Source("S1", junction_id="J2", policy_id="poisson", pos=(0, -10))
-    S2 = Source("S2", junction_id="J4", policy_id="poisson", pos=(0, 0))
+    S0 = Source("S0", junction_id="J0", policy_id="poisson", pos=(0, 2))
+    S1 = Source("S1", junction_id="J2", policy_id="poisson", pos=(2, 2))
+    S2 = Source("S2", junction_id="J4", policy_id="poisson", pos=(0, -2))
 
     J0 = Junction("J0", incoming=["r_j1_j0"], outgoing=["r_j0_j1", "r_j0_j3"], pos=(20, 10))
     J1 = Junction("J1", incoming=["r_j0_j1"], outgoing=["r_j1_j2", "r_j1_j0"], pos=(40, 15))
@@ -61,9 +60,9 @@ def setup(engine):
     J4 = Junction("J4", incoming=["r_j3_j4"], outgoing=["r_j4_j5"], pos=(20, -10))
     J5 = Junction("J5", incoming=["r_j2_j5", "r_j4_j5"], outgoing=[], pos=(60, -10))
 
-    K0 = Sink("K0", junction_id="J5", policy_id="counting", pos=(80, -15))
-    K1 = Sink("K1", junction_id="J5", policy_id="counting", pos=(80, 0))
-    K2 = Sink("K2", junction_id="J5", policy_id="counting", pos=(80, 15))
+    K0 = Sink("K0", junction_id="J5", policy_id="counting", pos=(2, -2))
+    K1 = Sink("K1", junction_id="J4", policy_id="counting", pos=(0, 2))
+    K2 = Sink("K2", junction_id="J3", policy_id="counting", pos=(2, -2))
 
     for j in [J0, J1, J2, J3, J4, J5]:
         net.add_junction(j)
@@ -75,14 +74,14 @@ def setup(engine):
         net.add_sink(k)
 
     roads = [
-        Road("r_j0_j1", "J0", "J1", 10, 10, 1),
+        Road("r_j0_j1", "J0", "J1", 10, 20, 2),
         Road("r_j1_j2", "J1", "J2", 10, 10, 1),
         Road("r_j2_j3", "J2", "J3", 10, 10, 1),
         Road("r_j0_j3", "J0", "J3", 10, 10, 1),
 
         Road("r_j3_j4", "J3", "J4", 10, 10, 1),
-        Road("r_j4_j5", "J4", "J5", 10, 10, 1),
-        Road("r_j2_j5", "J2", "J5", 10, 10, 1),
+        Road("r_j4_j5", "J4", "J5", 10, 30, 3),
+        Road("r_j2_j5", "J2", "J5", 10, 20, 2),
 
         Road("r_j1_j0", "J1", "J0", 10, 10, 1),
     ]
@@ -142,7 +141,7 @@ def main():
     engine.logger.log(LogLevel.INFO, src_system(), "simulation_done")
 
     renderer = MatplotlibRenderer(timeline=recorder)
-    renderer.animate()
+    renderer.animate(show_labels=False, save_path="traffic.mp4", show_plot=True)
 
 
 if __name__ == "__main__":

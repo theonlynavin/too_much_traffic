@@ -19,8 +19,7 @@ from .road_overlay import RoadOverlay
 from .style import Style
 
 FRAME_RATE = 30
-PLAYBACK_SPEED = 0.5
-
+PLAYBACK_SPEED = 1
 
 class MatplotlibRenderer:
     def __init__(self, timeline):
@@ -48,7 +47,7 @@ class MatplotlibRenderer:
         self.vehicle_labels = {}
 
     def _build_meta(self):
-        meta = {"dest": {}, "spawn": {}, "exit": {}, "kind": {}}
+        meta = {"dest": {}, "spawn": {}, "exit": {}, "kind": {}, "rgba": {}}
 
         for t, e in self.timeline.events:
             if e["type"] == "spawn":
@@ -56,6 +55,11 @@ class MatplotlibRenderer:
                 meta["dest"][vid] = e["destination"]
                 meta["spawn"][vid] = t
                 meta["kind"][vid] = e.get("kind", "car")
+                
+                # Pre-calculate RGBA color
+                dest = e["destination"]
+                base_color = self.style.color(dest)
+                meta["rgba"][vid] = plt.cm.colors.to_rgba(base_color)
 
             elif e["type"] == "exit":
                 meta["exit"][e["vehicle_id"]] = t
@@ -79,7 +83,7 @@ class MatplotlibRenderer:
         self.ax.set_ylim(min(ys) - 10, max(ys) + 10)
         self.ax.set_aspect("equal")
 
-    def animate(self):
+    def animate(self, show_labels=False, save_path="traffic.mp4", show_plot=True):
         segments = self.motion.segments
         if not segments:
             print("No segments")
@@ -111,8 +115,8 @@ class MatplotlibRenderer:
 
                 x, y = road_to_world(road, seg["lane"], alpha)
 
-                dest = self.meta["dest"].get(vid)
-                base_color = self.style.color(dest)
+                # dest = self.meta["dest"].get(vid)
+                # base_color = self.style.color(dest)
 
                 size = 80
                 spawn_t = self.meta["spawn"].get(vid)
@@ -144,19 +148,20 @@ class MatplotlibRenderer:
                 grouped_data[kind]["s"].append(size)
                 seen.add(vid)
 
-                rgba = plt.cm.colors.to_rgba(base_color)
+                rgba = self.meta["rgba"].get(vid, (0.5, 0.5, 0.5, 1.0))
                 grouped_data[kind]["c"].append((rgba[0], rgba[1], rgba[2], alpha_val))
 
-                label = self.vehicle_labels.get(vid)
-                if label is None:
-                    label = self.ax.text(
-                        x + 0.25, y + 0.25, vid,
-                        fontsize=6, color='black', zorder=7
-                    )
-                    self.vehicle_labels[vid] = label
-                else:
-                    label.set_position((x + 0.25, y + 0.25))
-                label.set_visible(True)
+                if show_labels:
+                    label = self.vehicle_labels.get(vid)
+                    if label is None:
+                        label = self.ax.text(
+                            x + 0.25, y + 0.25, vid,
+                            fontsize=6, color='black', zorder=7
+                        )
+                        self.vehicle_labels[vid] = label
+                    else:
+                        label.set_position((x + 0.25, y + 0.25))
+                    label.set_visible(True)
 
             for k, scatter in self.vehicle_scatters.items():
                 g_xs = grouped_data[k]["x"]
@@ -178,6 +183,11 @@ class MatplotlibRenderer:
         frames = int(t_max * FRAME_RATE / PLAYBACK_SPEED)
 
         anim = FuncAnimation(self.fig, update, frames=frames, interval=30)
-        anim.save("traffic.mp4", writer="ffmpeg", fps=FRAME_RATE)
+        
+        if save_path:
+            print(f"Rendering {frames} frames to {save_path}...")
+            anim.save(save_path, writer="ffmpeg", fps=FRAME_RATE)
+            print("Rendering complete.")
 
-        plt.show()
+        if show_plot:
+            plt.show()
