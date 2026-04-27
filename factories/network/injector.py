@@ -1,5 +1,6 @@
 from components.source import Source
 from components.sink import Sink
+from components.road import Road
 
 
 class SourceSinkInjector:
@@ -43,3 +44,10 @@ class SourceSinkInjector:
             pos = j.pos
 
             net.add_sink(Sink(kid, pos))
+
+            # wire a short road from the junction into the sink so the
+            # routing table (_dijkstra_to) can find a path to this sink
+            rid = f"R_{jid}_{kid}"
+            road = Road(rid, jid, kid, 5, 20, 1)
+            net.add_road(road)
+            j.outgoing.append(rid)

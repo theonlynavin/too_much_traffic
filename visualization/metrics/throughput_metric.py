@@ -1,4 +1,4 @@
-from .base import Metric
+from .metric import Metric
 
 
 class ThroughputMetric(Metric):

@@ -1,9 +1,8 @@
-from .timeline import EventLog, SnapshotStore, SegmentStore, MetricsCollector
+from .timeline import EventLog, SegmentStore, MetricsCollector
 
 class Recorder:
     def __init__(self):
         self.events = EventLog()
-        self.snapshots = SnapshotStore()
         self.segments = SegmentStore()
 
         self.metrics = []  # ← now pluggable

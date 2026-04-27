@@ -13,7 +13,6 @@ class MoveEvent(Event):
         self.lane = lane
 
     def process(self, engine):
-        road = engine.components[self.road_id]
 
         vehicle = engine.components.get(self.vehicle_id)
         if vehicle is None:
@@ -26,7 +25,20 @@ class MoveEvent(Event):
             )
             return
 
-        if not road.is_front(self.vehicle_id, self.lane):
+        road = engine.components.get(self.road_id)
+        if road is None:
+            engine.logger.log(
+                LogLevel.WARN,
+                src_event(self.type),
+                "stale_move_event_no_road",
+                vehicle_id=self.vehicle_id,
+                road_id=self.road_id
+            )
+            return
+
+        is_front = road.is_front(self.vehicle_id, self.lane)
+        
+        if not is_front:
             return
 
         if road.end == vehicle.destination:
@@ -34,8 +46,12 @@ class MoveEvent(Event):
             return
 
         junction = engine.components[road.end]
-        junction.enqueue(road.id, vehicle.id, self.lane)
-
+        vehicle.arrival_time = engine.time
+        already_waiting = any(v == vehicle.id for v, _ in junction.queues[road.id])
+        
+        if not already_waiting:
+            junction.enqueue(road.id, vehicle.id, self.lane)
+        
         # DO NOT leave it on the road logically
         # (still physically there, but now controlled by junction)
 
@@ -109,6 +125,8 @@ class MoveEvent(Event):
 
     def _move(self, engine, vehicle, road, next_road, lane):
         road.remove_vehicle(vehicle, lane)
+        self._schedule_new_front(engine, road, lane)
+        self._wake_up_upstream_junctions(engine, road)
 
         lane_policy = engine.policies["lane"]
         new_lane = lane_policy.choose_lane(engine, next_road, vehicle)
@@ -117,12 +135,14 @@ class MoveEvent(Event):
 
         t0 = engine.time
         t1 = engine.time + tt
+        vehicle.travel_end_time = t1
 
         engine.emit({
             "type": "segment",
             "vehicle_id": vehicle.id,
             "road_id": next_road.id,
             "lane": new_lane,
+            "size": vehicle.size,
             "t_start": t0,
             "t_end": t1
         })
@@ -148,10 +168,14 @@ class MoveEvent(Event):
 
     def _exit(self, engine, vehicle, road):
         road.remove_vehicle(vehicle, self.lane)
+        self._schedule_new_front(engine, road, self.lane)
+        self._wake_up_upstream_junctions(engine, road)
 
         sink = engine.components[vehicle.destination]
         prev = sink.received
         sink.record(vehicle.id)
+
+        del engine.components[vehicle.id]
 
         engine.emit({
             "type": "exit",
@@ -159,13 +183,6 @@ class MoveEvent(Event):
             "sink_id": sink.id
         })
         
-        upstream = engine.network.upstream_roads(road.id)
-
-        for r in upstream:
-            j = engine.components.get(r.end)
-            if j:
-                self._attempt_transfer(engine, j)
-
         engine.logger.log(
             LogLevel.INFO,
             src_event(self.type),
@@ -185,3 +202,20 @@ class MoveEvent(Event):
             "road_id": self.road_id,
             "lane": self.lane
         }
+
+    def _schedule_new_front(self, engine, road, lane):
+        q = road.lanes[lane]
+        if not q:
+            return
+
+        next_vid = q[0]
+        vehicle = engine.components.get(next_vid)
+        if vehicle and engine.time >= vehicle.travel_end_time:
+            engine.schedule(MoveEvent(engine.time, next_vid, road.id, lane))
+
+    def _wake_up_upstream_junctions(self, engine, road):
+        upstream = engine.network.upstream_roads(road.id)
+        for r in upstream:
+            j = engine.components.get(r.end)
+            if j:
+                self._attempt_transfer(engine, j)

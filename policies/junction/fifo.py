@@ -12,7 +12,10 @@ class FIFOJunctionPolicy(JunctionPolicy):
                 continue
 
             vid, _ = q[0]
-            t = engine.vehicles[vid].last_event_time
+            vehicle = engine.components.get(vid)
+            if vehicle is None:
+                continue
+            t = getattr(vehicle, "arrival_time", float("inf"))
 
             if t < best_time:
                 best_time = t

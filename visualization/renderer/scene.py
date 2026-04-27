@@ -1,11 +1,15 @@
 import numpy as np
 
-def draw_roads(ax, geometry):
-    for r in geometry["roads"].values():
+def draw_roads(ax, geometry, style):
+    road_artists = {}
+    for rid, r in geometry["roads"].items():
         (x1, y1), (x2, y2) = r["start"], r["end"]
         lanes = r["lanes"]
 
-        ax.plot([x1, x2], [y1, y2], linewidth=10, color="lightgray", zorder=1)
+        road_line, = ax.plot(
+            [x1, x2], [y1, y2], linewidth=10, color=style.road_base_color, zorder=1
+        )
+        road_artists[rid] = road_line
 
         dx, dy = x2 - x1, y2 - y1
         norm = np.hypot(dx, dy)
@@ -20,6 +24,7 @@ def draw_roads(ax, geometry):
             ys = [y1 + py * offset, y2 + py * offset]
 
             ax.plot(xs, ys, linestyle="--", color="white", linewidth=1, zorder=2)
+    return road_artists
 
 
 def draw_nodes(ax, geometry):

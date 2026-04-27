@@ -41,3 +41,10 @@ class RandomPlanarFactory(NetworkFactory):
         net.add_road(Road(rid, a, b, 10, 10, 1))
         net.junctions[a].outgoing.append(rid)
         net.junctions[b].incoming.append(rid)
+
+        # reverse direction so all OD pairs are reachable
+        rid2 = f"R_{b}_{a}"
+        if rid2 not in net.roads:
+            net.add_road(Road(rid2, b, a, 10, 10, 1))
+            net.junctions[b].outgoing.append(rid2)
+            net.junctions[a].incoming.append(rid2)

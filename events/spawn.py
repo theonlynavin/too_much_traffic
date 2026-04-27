@@ -42,11 +42,24 @@ class SpawnEvent(Event):
             time_policy = engine.policies["travel_time"]
             travel_time = time_policy.compute(engine, road, vehicle)
 
-            engine.add_component(vehicle)
-            road.add_vehicle(vehicle, lane)
-            
             t0 = engine.time
             t1 = engine.time + travel_time
+            vehicle.travel_end_time = t1
+
+            engine.add_component(vehicle)
+            road.add_vehicle(vehicle, lane)
+
+            engine.emit({
+                "type": "spawn",
+                "vehicle_id": vid,
+                "source_id": source.id,
+                "road_id": road.id,
+                "destination": vehicle.destination,
+                "lane": lane,
+                "kind": vehicle.kind,
+                "t_start": t0,
+                "t_end": t1
+            })
 
             engine.emit({
                 "type": "segment",
@@ -54,6 +67,7 @@ class SpawnEvent(Event):
                 "road_id": road.id,
                 "destination": vehicle.destination,
                 "lane": lane,
+                "size": vehicle.size,
                 "t_start": t0,
                 "t_end": t1
             })

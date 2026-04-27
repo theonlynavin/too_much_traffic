@@ -5,6 +5,8 @@ import numpy as np
 from .geometry import road_to_world
 from .scene import draw_roads, draw_nodes
 from .motion import MotionModel
+from .road_state import RoadLoadTracker
+from .road_overlay import RoadOverlay
 from .style import Style
 
 FRAME_RATE = 30
@@ -20,27 +22,35 @@ class MatplotlibRenderer:
         # core systems
         self.motion = MotionModel(timeline.segments.segments)
         self.style = Style()
+        self.road_state = RoadLoadTracker(self.geometry)
         self.meta = self._build_meta()
 
         # static scene
         self._draw_scene()
 
         # dynamic layers
-        self.vehicle_scatter = self.ax.scatter([], [], s=80, zorder=5)
+        self.markers = {"car": "o", "truck": "s", "bus": "D", "motorcycle": "^"}
+        self.vehicle_scatters = {}
+        for kind, marker in self.markers.items():
+            self.vehicle_scatters[kind] = self.ax.scatter([], [], s=80, marker=marker, zorder=5)
+        self.vehicle_scatters["default"] = self.ax.scatter([], [], s=80, marker="o", zorder=5)
+
         self.blocked_scatter = self.ax.scatter(
             [], [], s=140, facecolors='none', edgecolors='red', linewidths=2, zorder=6
         )
+        self.vehicle_labels = {}
 
     # ------------------------
 
     def _build_meta(self):
-        meta = {"dest": {}, "spawn": {}, "exit": {}}
+        meta = {"dest": {}, "spawn": {}, "exit": {}, "kind": {}}
 
         for t, e in self.timeline.events:
             if e["type"] == "spawn":
                 vid = e["vehicle_id"]
                 meta["dest"][vid] = e["destination"]
                 meta["spawn"][vid] = t
+                meta["kind"][vid] = e.get("kind", "car")
 
             elif e["type"] == "exit":
                 meta["exit"][e["vehicle_id"]] = t
@@ -50,8 +60,14 @@ class MatplotlibRenderer:
     # ------------------------
 
     def _draw_scene(self):
-        draw_roads(self.ax, self.geometry)
+        self.road_artists = draw_roads(self.ax, self.geometry, self.style)
         draw_nodes(self.ax, self.geometry)
+        self.road_overlay = RoadOverlay(
+            self.ax,
+            self.geometry,
+            self.style,
+            self.road_artists,
+        )
 
         xs = [p[0] for p in self.geometry["nodes"].values()]
         ys = [p[1] for p in self.geometry["nodes"].values()]
@@ -73,10 +89,12 @@ class MatplotlibRenderer:
         def update(frame):
             t = frame / FRAME_RATE * PLAYBACK_SPEED
             state = self.motion.state_at(t)
+            road_loads = self.road_state.loads_from_state(state, self.meta["exit"], t)
+            self.road_overlay.update(road_loads)
 
-            xs, ys = [], []
-            colors, sizes = [], []
+            grouped_data = {k: {"x": [], "y": [], "c": [], "s": []} for k in self.vehicle_scatters}
             bx, by = [], []
+            seen = set()
 
             for vid, seg in state.items():
                 road = self.geometry["roads"][seg["road_id"]]
@@ -115,24 +133,47 @@ class MatplotlibRenderer:
                     bx.append(x)
                     by.append(y)
 
-                xs.append(x)
-                ys.append(y)
-                sizes.append(size)
+                kind = self.meta["kind"].get(vid, "default")
+                if kind not in grouped_data:
+                    kind = "default"
+
+                grouped_data[kind]["x"].append(x)
+                grouped_data[kind]["y"].append(y)
+                grouped_data[kind]["s"].append(size)
+                seen.add(vid)
 
                 rgba = plt.cm.colors.to_rgba(base_color)
-                colors.append((rgba[0], rgba[1], rgba[2], alpha_val))
+                grouped_data[kind]["c"].append((rgba[0], rgba[1], rgba[2], alpha_val))
+
+                label = self.vehicle_labels.get(vid)
+                if label is None:
+                    label = self.ax.text(
+                        x + 0.25, y + 0.25, vid,
+                        fontsize=6, color='black', zorder=7
+                    )
+                    self.vehicle_labels[vid] = label
+                else:
+                    label.set_position((x + 0.25, y + 0.25))
+                label.set_visible(True)
 
             # vehicles
-            self.vehicle_scatter.set_offsets(
-                np.column_stack((xs, ys)) if xs else np.empty((0, 2))
-            )
-            self.vehicle_scatter.set_sizes(sizes)
-            self.vehicle_scatter.set_facecolors(colors)
+            for k, scatter in self.vehicle_scatters.items():
+                g_xs = grouped_data[k]["x"]
+                if g_xs:
+                    scatter.set_offsets(np.column_stack((g_xs, grouped_data[k]["y"])))
+                    scatter.set_sizes(grouped_data[k]["s"])
+                    scatter.set_facecolors(grouped_data[k]["c"])
+                else:
+                    scatter.set_offsets(np.empty((0, 2)))
 
             # blocked overlay
             self.blocked_scatter.set_offsets(
                 np.column_stack((bx, by)) if bx else np.empty((0, 2))
             )
+
+            for vid, label in self.vehicle_labels.items():
+                if vid not in seen:
+                    label.set_visible(False)
 
         frames = int(t_max * FRAME_RATE / PLAYBACK_SPEED)
 

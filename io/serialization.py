@@ -12,6 +12,7 @@ def serialize_system(engine):
                 "type": comp.__class__.__name__,
                 "data": comp.to_dict()
             }
+            for cid, comp in engine.components.items()
         },
         "rng": engine.rng.to_dict(),
         "logs": engine.logger.to_dict(),

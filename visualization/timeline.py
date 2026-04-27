@@ -72,7 +72,8 @@ def build_geometry(network):
         roads[rid] = {
             "start": nodes[r.start],
             "end": nodes[r.end],
-            "lanes": r.num_lanes
+            "lanes": r.num_lanes,
+            "capacity": r.capacity,
         }
 
     return {

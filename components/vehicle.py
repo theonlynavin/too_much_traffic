@@ -17,6 +17,8 @@ class Vehicle:
         self.kind = kind
         self.size = size
         self.speed = speed
+        self.arrival_time = float("inf")  # time vehicle last reached front of a road
+        self.travel_end_time = -1.0
 
     def to_dict(self):
         return {
@@ -25,12 +27,14 @@ class Vehicle:
             "destination": self.destination,
             "kind": self.kind,
             "size": self.size,
-            "speed": self.speed
+            "speed": self.speed,
+            "arrival_time": self.arrival_time,
+            "travel_end_time": self.travel_end_time
         }
 
     @classmethod
     def from_dict(cls, data):
-        return cls(
+        obj = cls(
             data["id"],
             data["source"],
             data["destination"],
@@ -38,3 +42,6 @@ class Vehicle:
             data["size"],
             data["speed"]
         )
+        obj.arrival_time = data.get("arrival_time", float("inf"))
+        obj.travel_end_time = data.get("travel_end_time", -1.0)
+        return obj
