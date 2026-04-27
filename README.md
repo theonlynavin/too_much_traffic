@@ -2,7 +2,7 @@
 
 A modular and evolving event based traffic simulator.
 
-## System Architecture
+## Architecture
 
 The simulator is organized into four primary layers:
 
@@ -26,20 +26,24 @@ Policies encapsulate the behavioral logic of the simulation. This modularity all
 - **JunctionPolicy**: Manages the order in which vehicles from different incoming roads enter an intersection (e.g., Round Robin).
 - **LanePolicy**: Selects which lane a vehicle should occupy upon entering a road.
 - **SinkPolicy**: Handles the logic of vehicle exit, such as recording throughput metrics.
+Users can define new policies in addition to the existing template policies.
 
 ### 4. Engine
 The Engine is the central orchestrator. it manages the global simulation clock, hosts the event queue, and maintains the registry of all components and policies.
+
+### 5. Visualization
+These contain modules which given a timeline/record of events help in analyzing metrics or convert it to a viewable animation.
 
 ## Simulation Setup
 
 To run a simulation, the user is responsible for defining:
 - **Network Topology**: The graph of Junctions and Roads.
-- **Infrastructure**: The placement of Sources and Sinks relative to the junctions.
+- **Sinks, Sources**: The placement of Sources and Sinks.
 - **Policy Configuration**: Selecting and registering specific policy implementations with the Engine.
-- **Vehicle Factories**: Defining the distributions of vehicle types (cars, trucks, etc.) and their destination probabilities.
-- **Simulation Parameters**: Setting the simulation duration and random seed.
+- **Traffic Factories**: Defining the distributions of vehicle types (cars, trucks, etc.) and their destination probabilities.
+- **Simulation Parameters**: Setting the simulation duration, random seed, etc.
 
-## Existing Features
+## Some Existing Policies/Features
 
 - **Multi-Lane Roads**: Support for roads with multiple lanes and lane-selection logic.
 - **Dijkstra Routing**: Static shortest-path calculation across the junction graph.
