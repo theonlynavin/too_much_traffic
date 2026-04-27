@@ -1,8 +1,13 @@
 """
+Notes:
+- End point for vehicles
+- Records vehicle exits and total throughput
+
 TODO:
 - Track per-vehicle exit times
 - Add throughput statistics
 """
+
 class Sink:
     def __init__(self, sid: str, pos: tuple[float]):
         self.id = sid

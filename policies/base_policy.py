@@ -1,5 +1,7 @@
 """
-Base policy interface.
+Notes:
+- Base interface for all pluggable policies
+- All policies must be serializable via to_dict/from_dict
 
 TODO:
 - Standardize input/output contract

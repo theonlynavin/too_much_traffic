@@ -1,3 +1,12 @@
+"""
+Notes:
+- Centralizes color schemes and styling parameters for the renderer
+- Maps destinations to unique colors for vehicle differentiation
+
+TODO:
+- FLAG: Hardcoded color palette.
+- Support custom themes (dark mode, high contrast).
+"""
 class Style:
     def __init__(self):
         self.palette = ["blue", "green", "orange", "purple", "red"]

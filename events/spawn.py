@@ -1,3 +1,13 @@
+"""
+Notes:
+- Handles periodic vehicle generation at sources
+- Computes initial travel time and schedules first move
+
+TODO:
+- FLAG: Encapsulation violation - directly setting vehicle.travel_end_time.
+- FLAG: Missing from_dict implementation.
+- Consider moving spawning logic to a dedicated Spawner component.
+"""
 from core.event import Event
 from core.logger import LogLevel
 from core.log_src import src_event
@@ -26,7 +36,9 @@ class SpawnEvent(Event):
 
         vid = vehicle.id
 
-        if road.has_space_for(vehicle.size):
+        state_policy = engine.policies["state"]
+
+        if state_policy.has_space(engine, road.id, vehicle.size, road.capacity):
             lane_policy = engine.policies.get("lane")
             if lane_policy is None:
                 engine.logger.log(
@@ -40,14 +52,16 @@ class SpawnEvent(Event):
             lane = lane_policy.choose_lane(engine, road, vehicle)
 
             time_policy = engine.policies["travel_time"]
-            travel_time = time_policy.compute(engine, road, vehicle)
+            tt_free = time_policy.compute(engine, road, vehicle)
+            trajectory = time_policy.compute_trajectory(engine, road, lane, vehicle, tt_free)
 
-            t0 = engine.time
-            t1 = engine.time + travel_time
-            vehicle.travel_end_time = t1
+            state_policy.set_trajectory(engine, vid, trajectory)
 
             engine.add_component(vehicle)
-            road.add_vehicle(vehicle, lane)
+            state_policy.add_to_lane(engine, road.id, lane, vid, vehicle.size)
+
+            t0 = trajectory[0]["t_start"]
+            t1 = trajectory[-1]["t_end"]
 
             engine.emit({
                 "type": "spawn",
@@ -61,16 +75,19 @@ class SpawnEvent(Event):
                 "t_end": t1
             })
 
-            engine.emit({
-                "type": "segment",
-                "vehicle_id": vid,
-                "road_id": road.id,
-                "destination": vehicle.destination,
-                "lane": lane,
-                "size": vehicle.size,
-                "t_start": t0,
-                "t_end": t1
-            })
+            for seg in trajectory:
+                engine.emit({
+                    "type": "segment",
+                    "vehicle_id": vid,
+                    "road_id": road.id,
+                    "destination": vehicle.destination,
+                    "lane": lane,
+                    "size": vehicle.size,
+                    "t_start": seg["t_start"],
+                    "t_end": seg["t_end"],
+                    "alpha_start": seg["alpha_start"],
+                    "alpha_end": seg["alpha_end"]
+                })
             
             engine.logger.log(
                 LogLevel.INFO,
@@ -88,7 +105,7 @@ class SpawnEvent(Event):
 
             engine.schedule(
                 MoveEvent(
-                    engine.time + travel_time,
+                    t1,
                     vid,
                     road.id,
                     lane
@@ -123,3 +140,12 @@ class SpawnEvent(Event):
             "source_id": self.source_id,
             "vehicle_id_counter": self.vehicle_id_counter
         }
+
+    @classmethod
+    def from_dict(cls, data):
+        d = data["data"]
+        return cls(
+            time=data["time"],
+            source_id=d["source_id"],
+            vehicle_id_counter=d["vehicle_id_counter"]
+        )

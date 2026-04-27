@@ -1,3 +1,12 @@
+"""
+Notes:
+- Injects source and sink nodes into an existing junction network
+- Connects sinks with dedicated roads to ensure connectivity in routing tables
+
+TODO:
+- FLAG: Active logic (wiring roads/junctions) in a factory/injector.
+- FLAG: Missing serialization support.
+"""
 from components.source import Source
 from components.sink import Sink
 from components.road import Road
@@ -17,18 +26,16 @@ class SourceSinkInjector:
         if self.n_sources + self.n_sinks > len(nodes):
             raise ValueError("Not enough nodes for sources + sinks")
 
-        # sample without replacement
         chosen = engine.rng.sample(nodes, self.n_sources + self.n_sinks)
 
         sources = chosen[:self.n_sources]
         sinks = chosen[self.n_sources:]
 
-        # --- sources ---
         for i, jid in enumerate(sources):
             j = net.junctions[jid]
 
             if not j.outgoing:
-                continue  # skip dead node
+                continue
 
             sid = f"S{i}"
             pos = j.pos
@@ -36,7 +43,6 @@ class SourceSinkInjector:
 
             net.add_source(Source(sid, road_id, "poisson", pos))
 
-        # --- sinks ---
         for i, jid in enumerate(sinks):
             j = net.junctions[jid]
 
@@ -45,9 +51,21 @@ class SourceSinkInjector:
 
             net.add_sink(Sink(kid, pos))
 
-            # wire a short road from the junction into the sink so the
-            # routing table (_dijkstra_to) can find a path to this sink
             rid = f"R_{jid}_{kid}"
             road = Road(rid, jid, kid, 5, 20, 1)
             net.add_road(road)
             j.outgoing.append(rid)
+
+    def to_dict(self):
+        return {
+            "type": self.__class__.__name__,
+            "n_sources": self.n_sources,
+            "n_sinks": self.n_sinks
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            n_sources=data["n_sources"],
+            n_sinks=data["n_sinks"]
+        )

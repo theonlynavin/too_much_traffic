@@ -40,11 +40,9 @@ class Logger:
             return
 
         if self._current_time is None:
-            # allow only system-level logs before simulation starts
             if source != src_system():
                 raise RuntimeError("Logger time not set by engine")
             
-        # enforce reserved key safety
         for key in data:
             if key in RESERVED_KEYS:
                 raise ValueError(f"'{key}' is a reserved log field")
@@ -57,17 +55,14 @@ class Logger:
             "data": data
         }
 
-        # in-memory
         self.logs.append(record)
 
-        # console
         if self.console_level is not None and level >= self.console_level:
             if self._current_time is None:
                 print(f"[{level.name}] {source}::{event} {data}")
             else:
                 print(f"[{level.name}] t={self._current_time:.3f} {source}::{event} {data}")
                 
-        # file (JSONL)
         if self._file:
             self._file.write(json.dumps(record) + "\n")
         

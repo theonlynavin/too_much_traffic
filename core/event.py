@@ -4,10 +4,11 @@ Notes:
 - Event type must be stable and ASCII-only
 
 TODO:
+- FLAG: All subclasses must implement from_dict for full serialization support.
 - Implement registry for type to class mapping
 """
 class Event:
-    type = "base_event"  # must be overridden with ASCII string
+    type = "base_event"
 
     def __init__(self, time: float):
         self.time = time

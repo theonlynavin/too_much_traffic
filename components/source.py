@@ -1,13 +1,15 @@
 """
 Notes:
-- No generation logic here, handled via events
+- Entry point for vehicles
+- Generation logic is handled by policies/events, not the component itself
 
 TODO:
 - Support stochastic generation (Poisson)
 - Add vehicle template (default destination, type)
 """
+
 class Source:
-    def __init__(self, sid: str, road_id: str, policy_id: float, pos: tuple[float]):
+    def __init__(self, sid: str, road_id: str, policy_id: str, pos: tuple[float]):
         self.id = sid
         self.road_id = road_id
         self.policy_id = policy_id

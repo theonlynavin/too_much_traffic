@@ -1,3 +1,12 @@
+"""
+Notes:
+- Renders the static topology (roads and nodes) onto the plot
+- Computes lane offsets for multi-lane road visualization
+
+TODO:
+- FLAG: Active drawing logic - geometry calculations inside draw_roads.
+- Support curvilinear road segments.
+"""
 import numpy as np
 
 def draw_roads(ax, geometry, style):

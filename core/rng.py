@@ -1,3 +1,11 @@
+"""
+Notes:
+- Centralized random number generation
+- Ensures reproducibility via seed and state management
+
+TODO:
+- Add more distribution helpers (Gamma, Weibull)
+"""
 import random
 import math
 
@@ -5,10 +13,6 @@ import math
 class RNG:
     def __init__(self, seed: int):
         self._rng = random.Random(seed)
-
-    # ------------------------
-    # basic
-    # ------------------------
 
     def uniform(self, a: float, b: float) -> float:
         return self._rng.uniform(a, b)
@@ -28,10 +32,6 @@ class RNG:
         self._rng.shuffle(seq)
         return seq
 
-    # ------------------------
-    # sampling
-    # ------------------------
-
     def sample(self, seq, k: int):
         if k > len(seq):
             raise ValueError("sample larger than population")
@@ -41,10 +41,6 @@ class RNG:
         if not seq:
             raise ValueError("empty sequence")
         return [self.choice(seq) for _ in range(n)]
-
-    # ------------------------
-    # distributions
-    # ------------------------
 
     def exponential(self, rate: float) -> float:
         if rate <= 0:
@@ -59,10 +55,6 @@ class RNG:
         if not (0 <= p <= 1):
             raise ValueError("p must be in [0,1]")
         return self._rng.random() < p
-
-    # ------------------------
-    # weighted sampling
-    # ------------------------
 
     def weighted_choice(self, items, weights):
         if len(items) != len(weights):
@@ -89,19 +81,11 @@ class RNG:
         weights = list(d.values())
         return self.weighted_choice(items, weights)
 
-    # ------------------------
-    # convenience
-    # ------------------------
-
     def uniform_int(self, low: int, high: int):
         return self._rng.randint(low, high)
 
     def uniform_float(self, low: float, high: float):
         return self._rng.uniform(low, high)
-
-    # ------------------------
-    # state (for reproducibility)
-    # ------------------------
 
     def get_state(self):
         return self._rng.getstate()

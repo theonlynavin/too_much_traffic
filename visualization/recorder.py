@@ -1,3 +1,11 @@
+"""
+Notes:
+- Listens to engine events and records them for visualization
+- Maintains a history of segments and vehicle properties
+
+TODO:
+- FLAG: Missing to_dict/from_dict implementation.
+"""
 from .timeline import EventLog, SegmentStore, MetricsCollector
 
 class Recorder:
@@ -5,7 +13,7 @@ class Recorder:
         self.events = EventLog()
         self.segments = SegmentStore()
 
-        self.metrics = []  # ← now pluggable
+        self.metrics = []
 
         self.vehicle_dest = {}
         self.spawn_time = {}

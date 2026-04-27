@@ -1,8 +1,10 @@
 """
-System serialization utilities.
+Notes:
+- High-level utility for capturing the entire simulation state
+- Orchestrates to_dict calls across all engine-managed components
 
 TODO:
-- Implement full deserialization pipeline
+- Implement full deserialization pipeline (from_dict)
 """
 def serialize_system(engine):
     return {

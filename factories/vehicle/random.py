@@ -1,3 +1,11 @@
+"""
+Notes:
+- Constructs vehicles with randomized properties (destination, type)
+- Uses the engine's RNG for reproducibility
+
+TODO:
+- FLAG: Missing serialization support.
+"""
 from components.vehicle import Vehicle
 from .base import VehicleFactory
 
@@ -21,4 +29,18 @@ class RandomVehicleFactory(VehicleFactory):
             kind=kind,
             size=props["size"],
             speed=props["speed"]
+        )
+
+    def to_dict(self):
+        return {
+            "type": self.__class__.__name__,
+            "destinations": self.destinations,
+            "kinds": self.kinds
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            destinations=data["destinations"],
+            kinds=data["kinds"]
         )

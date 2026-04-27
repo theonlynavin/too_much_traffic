@@ -11,5 +11,7 @@ class CongestionPolicy(TravelTimePolicy):
 
     def compute(self, engine, road, vehicle):
         base = road.length / vehicle.speed
-        congestion = 1 + self.alpha * (road.load / road.capacity)
+        state_policy = engine.policies["state"]
+        load = state_policy.get_load(engine, road.id)
+        congestion = 1 + self.alpha * (load / road.capacity)
         return base * congestion

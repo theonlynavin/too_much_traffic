@@ -1,24 +1,25 @@
-from core.logger import Logger, LogLevel
+"""
+Notes:
+- Defines the physical topology of the simulation
+- Computes static routing tables using Dijkstra's algorithm
+
+TODO:
+- FLAG: Missing to_dict/from_dict implementation.
+- FLAG: Implicit behavior - build() method directly modifies engine state.
+- Add graph validation (connectivity, dangling roads)
+"""
+from core.logger import LogLevel
 from core.log_src import src_system
 import heapq
 
-"""
-Notes:
-- Defines topology and builds engine state
-- Does NOT execute simulation
 
-TODO:
-- Add graph validation (connectivity, dangling roads)
-- Add pathfinding helpers
-"""
 class Network:
     def __init__(self):
         self.roads = {}
         self.junctions = {}
         self.sources = {}
         self.sinks = {}
-
-    # ------------------------
+        self.routing_table = {}
 
     def add_road(self, road):
         if road.id in self.roads:
@@ -40,12 +41,7 @@ class Network:
             raise ValueError("Duplicate sink id")
         self.sinks[sink.id] = sink
 
-    # ------------------------
-    
     def upstream_roads(self, road_id):
-        """
-        Returns roads that feed into this road
-        """
         road = self.roads[road_id]
         junction = self.junctions.get(road.start)
 
@@ -56,7 +52,6 @@ class Network:
     
     def next_road(self, current_node, destination):
         key = (current_node, destination)
-
         rid = self.routing_table.get(key)
 
         if rid is None:
@@ -83,9 +78,9 @@ class Network:
 
         raise ValueError(f"Unknown node {node_id}")
     
-    # ------------------------
-    
     def _dijkstra_to(self, destination_id):
+        # Dijkstra's algorithm performed in reverse from the destination
+        # to find the shortest path from all other nodes to this sink.
         dist = {destination_id: 0.0}
         prev = {}
 
@@ -97,6 +92,7 @@ class Network:
             if d > dist[node]:
                 continue
 
+            # Explore all incoming roads to current node (moving backwards)
             for road in self._incoming_to_node(node):
                 u = road.start
                 w = road.length
@@ -123,12 +119,7 @@ class Network:
 
         return roads
 
-    # ------------------------
-
     def build(self, engine):
-        """
-        Registers all components into engine
-        """
         for r in self.roads.values():
             engine.add_component(r)
 
@@ -142,7 +133,6 @@ class Network:
             engine.add_component(s)
             
         self.build_routing_tables() 
-        
         engine.set_network(self)
             
         engine.logger.log(
@@ -163,4 +153,34 @@ class Network:
 
             for node_id, road_id in prev.items():
                 self.routing_table[(node_id, sink_id)] = road_id
+
+    def to_dict(self):
+        return {
+            "roads": {rid: r.to_dict() for rid, r in self.roads.items()},
+            "junctions": {jid: j.to_dict() for jid, j in self.junctions.items()},
+            "sources": {sid: s.to_dict() for sid, s in self.sources.items()},
+            "sinks": {sid: s.to_dict() for sid, s in self.sinks.items()},
+            "routing_table": {f"{k[0]}|{k[1]}": v for k, v in self.routing_table.items()}
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        from components.road import Road
+        from components.junction import Junction
+        from components.source import Source
+        from components.sink import Sink
+
+        obj = cls()
+        obj.roads = {rid: Road.from_dict(d) for rid, d in data["roads"].items()}
+        obj.junctions = {jid: Junction.from_dict(d) for jid, d in data["junctions"].items()}
+        obj.sources = {sid: Source.from_dict(d) for sid, d in data["sources"].items()}
+        obj.sinks = {sid: Sink.from_dict(d) for sid, d in data["sinks"].items()}
+        
+        rt = {}
+        for k, v in data.get("routing_table", {}).items():
+            node, dest = k.split("|")
+            rt[(node, dest)] = v
+        obj.routing_table = rt
+        
+        return obj
         

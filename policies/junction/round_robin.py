@@ -1,3 +1,12 @@
+"""
+Notes:
+- Selects which incoming road gets to move a vehicle through the junction
+- Uses round-robin scheduling to ensure fairness
+
+TODO:
+- FLAG: Stores internal state (_indices) which must be fully serialized.
+- Add weighted round-robin based on road priority
+"""
 from .base import JunctionPolicy
 
 
@@ -6,9 +15,10 @@ class RoundRobinJunctionPolicy(JunctionPolicy):
         self._indices = {}  # junction_id -> int
 
     def select_incoming(self, engine, junction):
+        state_policy = engine.policies["state"]
         roads = [
-            rid for rid in junction.queues
-            if junction.peek(rid) is not None
+            rid for rid in junction.incoming
+            if state_policy.peek_junction(engine, junction.id, rid) is not None
         ]
 
         if not roads:

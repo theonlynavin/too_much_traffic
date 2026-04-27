@@ -1,8 +1,9 @@
 """
-Base passive component.
+Notes:
+- Base class for all passive components
 
 TODO:
-- Add schema validation for serialized data
+- FLAG: Add schema validation for serialized data.
 """
 class Component:
     def __init__(self, cid: str):

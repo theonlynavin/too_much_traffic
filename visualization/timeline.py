@@ -1,3 +1,12 @@
+"""
+Notes:
+- Data structures for storing simulation history and metrics
+- build_geometry() converts the live network into a static visualization-friendly format
+
+TODO:
+- FLAG: Missing to_dict/from_dict for metrics and event logs.
+- Add support for persistence (saving/loading history).
+"""
 class EventLog:
     def __init__(self):
         self.events = []

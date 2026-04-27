@@ -1,7 +1,11 @@
 """
 Notes:
-- Speed determines traversal time across roads
-- Size contributes to road capacity usage
+- Passive data container for vehicle properties
+- Speed and size are used by policies to compute traversal and capacity
+
+TODO:
+- FLAG: Internal time tracking (arrival_time, travel_end_time) violates "No internal time tracking" rule.
+- FLAG: No hidden state - arrival_time and travel_end_time are being modified externally by events.
 """
 class Vehicle:
     def __init__(self, vid: str, source: str, destination: str, kind : str, size: int, speed: float):
@@ -17,8 +21,6 @@ class Vehicle:
         self.kind = kind
         self.size = size
         self.speed = speed
-        self.arrival_time = float("inf")  # time vehicle last reached front of a road
-        self.travel_end_time = -1.0
 
     def to_dict(self):
         return {
@@ -27,9 +29,7 @@ class Vehicle:
             "destination": self.destination,
             "kind": self.kind,
             "size": self.size,
-            "speed": self.speed,
-            "arrival_time": self.arrival_time,
-            "travel_end_time": self.travel_end_time
+            "speed": self.speed
         }
 
     @classmethod
@@ -42,6 +42,4 @@ class Vehicle:
             data["size"],
             data["speed"]
         )
-        obj.arrival_time = data.get("arrival_time", float("inf"))
-        obj.travel_end_time = data.get("travel_end_time", -1.0)
         return obj

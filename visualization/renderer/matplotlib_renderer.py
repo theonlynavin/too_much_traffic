@@ -1,3 +1,12 @@
+"""
+Notes:
+- Animates simulation history using Matplotlib FuncAnimation
+- Handles spatial mapping, vehicle styling, and congestion overlays
+
+TODO:
+- FLAG: Active logic in animate() - complex state interpolation.
+- Add support for real-time (interactive) rendering.
+"""
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
@@ -12,6 +21,7 @@ from .style import Style
 FRAME_RATE = 30
 PLAYBACK_SPEED = 0.5
 
+
 class MatplotlibRenderer:
     def __init__(self, timeline):
         self.timeline = timeline
@@ -19,16 +29,13 @@ class MatplotlibRenderer:
 
         self.fig, self.ax = plt.subplots()
 
-        # core systems
         self.motion = MotionModel(timeline.segments.segments)
         self.style = Style()
         self.road_state = RoadLoadTracker(self.geometry)
         self.meta = self._build_meta()
 
-        # static scene
         self._draw_scene()
 
-        # dynamic layers
         self.markers = {"car": "o", "truck": "s", "bus": "D", "motorcycle": "^"}
         self.vehicle_scatters = {}
         for kind, marker in self.markers.items():
@@ -39,8 +46,6 @@ class MatplotlibRenderer:
             [], [], s=140, facecolors='none', edgecolors='red', linewidths=2, zorder=6
         )
         self.vehicle_labels = {}
-
-    # ------------------------
 
     def _build_meta(self):
         meta = {"dest": {}, "spawn": {}, "exit": {}, "kind": {}}
@@ -56,8 +61,6 @@ class MatplotlibRenderer:
                 meta["exit"][e["vehicle_id"]] = t
 
         return meta
-
-    # ------------------------
 
     def _draw_scene(self):
         self.road_artists = draw_roads(self.ax, self.geometry, self.style)
@@ -75,8 +78,6 @@ class MatplotlibRenderer:
         self.ax.set_xlim(min(xs) - 5, max(xs) + 5)
         self.ax.set_ylim(min(ys) - 5, max(ys) + 5)
         self.ax.set_aspect("equal")
-
-    # ------------------------
 
     def animate(self):
         segments = self.motion.segments
@@ -99,25 +100,26 @@ class MatplotlibRenderer:
             for vid, seg in state.items():
                 road = self.geometry["roads"][seg["road_id"]]
 
-                # position
+                # Interpolate position along the road based on time
                 if t <= seg["t_end"]:
-                    alpha = (t - seg["t_start"]) / (seg["t_end"] - seg["t_start"])
+                    a0 = seg.get("alpha_start", 0.0)
+                    a1 = seg.get("alpha_end", 1.0)
+                    alpha = a0 + (t - seg["t_start"]) / max(1e-9, seg["t_end"] - seg["t_start"]) * (a1 - a0)
                 else:
-                    alpha = 0.98  # hold near junction
+                    # Vehicle is blocked at the end of the segment (waiting for junction)
+                    alpha = seg.get("alpha_end", 0.98)
 
                 x, y = road_to_world(road, seg["lane"], alpha)
 
-                # base color
                 dest = self.meta["dest"].get(vid)
                 base_color = self.style.color(dest)
 
-                # spawn effect
                 size = 80
                 spawn_t = self.meta["spawn"].get(vid)
                 if spawn_t is not None and (t - spawn_t) < 0.5:
                     size = 200
 
-                # exit fade
+                # Exit effect: fade out vehicle markers over 0.5 seconds
                 alpha_val = 1.0
                 exit_t = self.meta["exit"].get(vid)
 
@@ -126,9 +128,9 @@ class MatplotlibRenderer:
                     if 0 <= dt < 0.5:
                         alpha_val = 1.0 - dt / 0.5
                     elif dt >= 0.5:
-                        continue  # remove vehicle
+                        continue
 
-                # blocked detection
+                # Blocked overlay: show a red circle if vehicle is stuck at junction
                 if t > seg["t_end"] and (t - seg["t_end"]) > 0.2:
                     bx.append(x)
                     by.append(y)
@@ -156,7 +158,6 @@ class MatplotlibRenderer:
                     label.set_position((x + 0.25, y + 0.25))
                 label.set_visible(True)
 
-            # vehicles
             for k, scatter in self.vehicle_scatters.items():
                 g_xs = grouped_data[k]["x"]
                 if g_xs:
@@ -166,7 +167,6 @@ class MatplotlibRenderer:
                 else:
                     scatter.set_offsets(np.empty((0, 2)))
 
-            # blocked overlay
             self.blocked_scatter.set_offsets(
                 np.column_stack((bx, by)) if bx else np.empty((0, 2))
             )

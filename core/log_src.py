@@ -1,7 +1,10 @@
 """
 Notes:
-- Centralized source naming
-- All logs must use these helpers
+- Centralized source naming for structured logging
+- All logs must use these helpers to ensure consistency
+
+TODO:
+- Add helper for custom policy-specific sources
 """
 def src_engine():
     return "Engine"

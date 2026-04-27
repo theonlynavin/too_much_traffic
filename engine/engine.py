@@ -7,6 +7,7 @@ TODO:
 """
 from core.logger import LogLevel
 from core.log_src import src_engine, src_system
+from core.state_store import StateStore
 
 class Engine:
     def __init__(self, rng, logger):
@@ -18,6 +19,7 @@ class Engine:
         self.logger = logger
         self.network = None
         self.listeners = []
+        self.state = StateStore()
 
     def set_event_queue(self, queue):
         self.queue = queue
@@ -114,12 +116,15 @@ class Engine:
             )
             raise RuntimeError("Event queue not set")
 
+        # Execution loop: time jumps directly to the next event time
         while not self.queue.is_empty():
             event = self.queue.pop()
 
+            # Stop if the next event exceeds the user-defined limit
             if event.time > until:
                 break
 
+            # Time advancement happens ONLY here
             self.time = event.time
             self.logger.set_time(self.time)
 
@@ -130,6 +135,7 @@ class Engine:
                 event_type=event.type
             )
 
+            # Delegate logic to the event object (command pattern)
             try:
                 event.process(self)
             except Exception as e:

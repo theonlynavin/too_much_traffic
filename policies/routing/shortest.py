@@ -1,3 +1,12 @@
+"""
+Notes:
+- Determines the next road for a vehicle using the network's routing table
+- Shortest path is pre-computed by the Network
+
+TODO:
+- FLAG: Policy reaches into engine.components[rid] directly.
+- Support dynamic re-routing based on live traffic
+"""
 from .base import RoutingPolicy
 
 

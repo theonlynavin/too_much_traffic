@@ -1,10 +1,10 @@
 """
-Priority queue for events.
-
 Notes:
+- Priority queue for events ordered by time
 - Counter ensures deterministic ordering for equal timestamps
 
 TODO:
+- FLAG: Missing from_dict implementation. All components must be fully serializable.
 - Implement proper deserialization with event reconstruction
 """
 import heapq
