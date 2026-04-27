@@ -20,25 +20,41 @@ class Network:
         self.sources = {}
         self.sinks = {}
         self.routing_table = {}
+        self._built = False
 
     def add_road(self, road):
+        if self._built: raise RuntimeError("Network already built")
         if road.id in self.roads:
             raise ValueError("Duplicate road id")
+        
+        # Validate that road endpoints are junctions
+        if road.start not in self.junctions:
+            raise ValueError(f"Road {road.id} starts at unknown junction {road.start}")
+        if road.end not in self.junctions:
+            raise ValueError(f"Road {road.id} ends at unknown junction {road.end}")
+            
         self.roads[road.id] = road
 
     def add_junction(self, junction):
+        if self._built: raise RuntimeError("Network already built")
         if junction.id in self.junctions:
             raise ValueError("Duplicate junction id")
         self.junctions[junction.id] = junction
 
     def add_source(self, source):
+        if self._built: raise RuntimeError("Network already built")
         if source.id in self.sources:
             raise ValueError("Duplicate source id")
+        if source.junction_id not in self.junctions:
+            raise ValueError(f"Source {source.id} attached to unknown junction {source.junction_id}")
         self.sources[source.id] = source
 
     def add_sink(self, sink):
+        if self._built: raise RuntimeError("Network already built")
         if sink.id in self.sinks:
             raise ValueError("Duplicate sink id")
+        if sink.junction_id not in self.junctions:
+            raise ValueError(f"Sink {sink.id} attached to unknown junction {sink.junction_id}")
         self.sinks[sink.id] = sink
 
     def upstream_roads(self, road_id):
@@ -107,16 +123,9 @@ class Network:
     
     def _incoming_to_node(self, node_id):
         roads = []
-
         if node_id in self.junctions:
             for rid in self.junctions[node_id].incoming:
                 roads.append(self.roads[rid])
-
-        elif node_id in self.sinks:
-            for road in self.roads.values():
-                if road.end == node_id:
-                    roads.append(road)
-
         return roads
 
     def build(self, engine):
@@ -133,6 +142,7 @@ class Network:
             engine.add_component(s)
             
         self.build_routing_tables() 
+        self._built = True
         engine.set_network(self)
             
         engine.logger.log(
@@ -148,8 +158,9 @@ class Network:
     def build_routing_tables(self):
         self.routing_table = {}
 
-        for sink_id in self.sinks:
-            prev = self._dijkstra_to(sink_id)
+        for sink_id, sink in self.sinks.items():
+            # Run Dijkstra from the junction the sink is attached to
+            prev = self._dijkstra_to(sink.junction_id)
 
             for node_id, road_id in prev.items():
                 self.routing_table[(node_id, sink_id)] = road_id
