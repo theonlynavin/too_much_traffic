@@ -32,8 +32,9 @@ class TransferPolicy(Policy):
         if front_vid != event.vehicle_id:
             return
 
-        if road.end == vehicle.destination:
-            self._exit(engine, vehicle, road, event.lane)
+        sink = engine.components.get(vehicle.destination)
+        if sink and road.end == sink.junction_id:
+            self._exit(engine, vehicle, road, sink, event.lane)
             return
 
         # Arrive at junction
@@ -67,6 +68,7 @@ class TransferPolicy(Policy):
 
         front_vid = state_policy.get_front_vehicle(engine, rid, lane)
         if front_vid != vid:
+            engine.logger.log(LogLevel.ERROR, src_event("transfer"), "inconsistent_state_not_front", expected=vid, actual=front_vid, road_id=rid, lane=lane)
             raise RuntimeError(f"Inconsistent state: vehicle {vid} not at front of {rid}")
 
         next_road = self._route(engine, vehicle, road, lane)
@@ -151,34 +153,17 @@ class TransferPolicy(Policy):
             to_lane=new_lane
         )
 
-    def _exit(self, engine, vehicle, road, lane):
+    def _exit(self, engine, vehicle, road, sink, lane):
         state_policy = engine.policies["state"]
         state_policy.remove_from_lane(engine, road.id, lane, vehicle.id, vehicle.size)
         self._schedule_new_front(engine, road, lane)
         self._wake_up_upstream_junctions(engine, road)
 
-        sink = engine.components[vehicle.destination]
-        prev = sink.received
-        sink.record(vehicle.id)
+        # Delegate to sink policy
+        sink_policy = engine.policies[sink.policy_id]
+        sink_policy.process_exit(engine, sink, vehicle)
 
         del engine.components[vehicle.id]
-
-        engine.emit({
-            "type": "exit",
-            "vehicle_id": vehicle.id,
-            "sink_id": sink.id
-        })
-        
-        engine.logger.log(
-            LogLevel.INFO,
-            src_event("move_event"),
-            "vehicle_exited",
-            vehicle_id=vehicle.id,
-            sink_id=sink.id,
-            lane=lane,
-            prev_received=prev,
-            new_received=sink.received
-        )
 
     def _schedule_new_front(self, engine, road, lane):
         state_policy = engine.policies["state"]

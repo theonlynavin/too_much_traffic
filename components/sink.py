@@ -9,30 +9,25 @@ TODO:
 """
 
 class Sink:
-    def __init__(self, sid: str, pos: tuple[float]):
+    def __init__(self, sid: str, junction_id: str, policy_id: str, pos: tuple[float]):
         self.id = sid
-        self.received = 0
-        self.received_ids = set()
+        self.junction_id = junction_id
+        self.policy_id = policy_id
         self.pos = pos
-
-    def record(self, vehicle_id):
-        if vehicle_id in self.received_ids:
-            raise ValueError("Vehicle exited twice")
-
-        self.received_ids.add(vehicle_id)
-        self.received += 1
 
     def to_dict(self):
         return {
             "id": self.id,
-            "received": self.received,
-            "received_ids": list(self.received_ids),
+            "junction_id": self.junction_id,
+            "policy_id": self.policy_id,
             "pos": self.pos
         }
 
     @classmethod
     def from_dict(cls, data):
-        obj = cls(data["id"], data["pos"])
-        obj.received = data["received"]
-        obj.received_ids = set(data.get("received_ids", []))
-        return obj
+        return cls(
+            data["id"], 
+            data.get("junction_id", ""), 
+            data.get("policy_id", "counting"), 
+            data["pos"]
+        )

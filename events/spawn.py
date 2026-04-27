@@ -24,17 +24,30 @@ class SpawnEvent(Event):
 
     def process(self, engine):
         source = engine.components[self.source_id]
-        road = engine.components[source.road_id]
-
         spawn_policy = engine.policies[source.policy_id]
-
         vehicle = spawn_policy.create_vehicle(
             engine,
             source,
             self.vehicle_id_counter
         )
-
         vid = vehicle.id
+
+        # Find initial road from the attached junction
+        rid = engine.network.next_road(source.junction_id, vehicle.destination)
+        if rid is None:
+            engine.logger.log(
+                LogLevel.WARN,
+                src_event(self.type),
+                "spawn_no_path",
+                vehicle_id=vid,
+                source_id=source.id,
+                junction_id=source.junction_id,
+                destination=vehicle.destination
+            )
+            self._schedule_next(engine, spawn_policy)
+            return
+
+        road = engine.components[rid]
 
         state_policy = engine.policies["state"]
 
@@ -89,6 +102,15 @@ class SpawnEvent(Event):
                     "alpha_end": seg["alpha_end"]
                 })
             
+            engine.schedule(
+                MoveEvent(
+                    t1,
+                    vid,
+                    road.id,
+                    lane
+                )
+            )
+
             engine.logger.log(
                 LogLevel.INFO,
                 src_event(self.type),
@@ -101,15 +123,6 @@ class SpawnEvent(Event):
                 size=vehicle.size,
                 destination=vehicle.destination,
                 cause="arrival"
-            )
-
-            engine.schedule(
-                MoveEvent(
-                    t1,
-                    vid,
-                    road.id,
-                    lane
-                )
             )
 
         else:
@@ -125,8 +138,10 @@ class SpawnEvent(Event):
                 reason="capacity_full"
             )
 
-        dt = spawn_policy.next_interarrival(engine)
+        self._schedule_next(engine, spawn_policy)
 
+    def _schedule_next(self, engine, spawn_policy):
+        dt = spawn_policy.next_interarrival(engine)
         engine.schedule(
             SpawnEvent(
                 engine.time + dt,

@@ -1,13 +1,16 @@
 from .base_policy import Policy
 from collections import deque
+from core.logger import LogLevel
 
 class TrafficStatePolicy(Policy):
     def add_to_lane(self, engine, road_id, lane, vehicle_id, size):
         road = engine.components.get(road_id)
         if road:
             if not (0 <= lane < road.num_lanes):
+                engine.logger.log(LogLevel.ERROR, "state_policy", "invalid_lane", lane=lane, road_id=road_id, vehicle_id=vehicle_id)
                 raise ValueError(f"invalid lane {lane} for road {road_id}")
             if not self.has_space(engine, road_id, size, road.capacity):
+                engine.logger.log(LogLevel.ERROR, "state_policy", "capacity_exceeded", road_id=road_id, vehicle_id=vehicle_id)
                 raise ValueError(f"capacity exceeded on road {road_id}")
 
         # Update lane queue
@@ -25,6 +28,7 @@ class TrafficStatePolicy(Policy):
         key_lane = f"road:{road_id}:lane:{lane}"
         q = engine.state.get(key_lane, deque())
         if not q or q[0] != vehicle_id:
+            engine.logger.log(LogLevel.ERROR, "state_policy", "not_front_vehicle", expected=vehicle_id, actual=q[0] if q else None, road_id=road_id, lane=lane)
             raise ValueError(f"Vehicle {vehicle_id} is not at the front of {key_lane}")
         q.popleft()
         engine.state.set(engine, key_lane, q)
@@ -60,6 +64,7 @@ class TrafficStatePolicy(Policy):
     def enqueue_junction(self, engine, junction_id, incoming_rid, vehicle_id, lane):
         junction = engine.components.get(junction_id)
         if junction and incoming_rid not in junction.incoming:
+            engine.logger.log(LogLevel.ERROR, "state_policy", "invalid_incoming_road", junction_id=junction_id, incoming_rid=incoming_rid)
             raise RuntimeError(f"{incoming_rid} not incoming to {junction_id}")
 
         key = f"junction:{junction_id}:queue:{incoming_rid}"
@@ -76,6 +81,7 @@ class TrafficStatePolicy(Policy):
         key = f"junction:{junction_id}:queue:{incoming_rid}"
         q = engine.state.get(key, deque())
         if not q:
+            engine.logger.log(LogLevel.ERROR, "state_policy", "empty_junction_queue", junction_id=junction_id, incoming_rid=incoming_rid)
             raise ValueError("empty queue")
         entry = q.popleft()
         engine.state.set(engine, key, q)

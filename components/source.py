@@ -9,20 +9,20 @@ TODO:
 """
 
 class Source:
-    def __init__(self, sid: str, road_id: str, policy_id: str, pos: tuple[float]):
+    def __init__(self, sid: str, junction_id: str, policy_id: str, pos: tuple[float]):
         self.id = sid
-        self.road_id = road_id
+        self.junction_id = junction_id
         self.policy_id = policy_id
         self.pos = pos
 
     def to_dict(self):
         return {
             "id": self.id,
-            "road_id": self.road_id,
+            "junction_id": self.junction_id,
             "policy_id": self.policy_id,
             "pos": self.pos
         }
 
     @classmethod
     def from_dict(cls, data):
-        return cls(data["id"], data["road_id"], data["policy_id"], data["pos"])
+        return cls(data["id"], data["junction_id"], data["policy_id"], data["pos"])
