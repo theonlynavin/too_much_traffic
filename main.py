@@ -24,6 +24,7 @@ from policies.lane.least_loaded import LeastLoadedLanePolicy
 from policies.junction.round_robin import RoundRobinJunctionPolicy
 from policies.state import TrafficStatePolicy
 from policies.transfer import TransferPolicy
+from policies.sink.counting import CountingSinkPolicy
 from factories.vehicle.random import RandomVehicleFactory
 from events.spawn import SpawnEvent
 from visualization.timeline import build_geometry
@@ -49,35 +50,31 @@ def build_engine():
 def setup(engine):
     net = Network()
 
-    S0 = Source("S0", road_id="r_s0_j0", policy_id="poisson", pos=(0, 10))
-    S1 = Source("S1", road_id="r_s1_j2", policy_id="poisson", pos=(0, -10))
-    S2 = Source("S2", road_id="r_s2_j4", policy_id="poisson", pos=(0, 0))
+    S0 = Source("S0", junction_id="J0", policy_id="poisson", pos=(0, 10))
+    S1 = Source("S1", junction_id="J2", policy_id="poisson", pos=(0, -10))
+    S2 = Source("S2", junction_id="J4", policy_id="poisson", pos=(0, 0))
 
-    J0 = Junction("J0", incoming=["r_s0_j0", "r_j1_j0"], outgoing=["r_j0_j1", "r_j0_j3"], pos=(20, 10))
+    J0 = Junction("J0", incoming=["r_j1_j0"], outgoing=["r_j0_j1", "r_j0_j3"], pos=(20, 10))
     J1 = Junction("J1", incoming=["r_j0_j1"], outgoing=["r_j1_j2", "r_j1_j0"], pos=(40, 15))
-    J2 = Junction("J2", incoming=["r_s1_j2", "r_j1_j2"], outgoing=["r_j2_j3", "r_j2_j5"], pos=(60, 10))
+    J2 = Junction("J2", incoming=["r_j1_j2"], outgoing=["r_j2_j3", "r_j2_j5"], pos=(60, 10))
     J3 = Junction("J3", incoming=["r_j0_j3", "r_j2_j3"], outgoing=["r_j3_j4"], pos=(40, 0))
-    J4 = Junction("J4", incoming=["r_s2_j4", "r_j3_j4"], outgoing=["r_j4_j5"], pos=(20, -10))
-    J5 = Junction("J5", incoming=["r_j2_j5", "r_j4_j5"], outgoing=["r_j5_k0", "r_j5_k1", "r_j5_k2"], pos=(60, -10))
+    J4 = Junction("J4", incoming=["r_j3_j4"], outgoing=["r_j4_j5"], pos=(20, -10))
+    J5 = Junction("J5", incoming=["r_j2_j5", "r_j4_j5"], outgoing=[], pos=(60, -10))
 
-    K0 = Sink("K0", pos=(80, -15))
-    K1 = Sink("K1", pos=(80, 0))
-    K2 = Sink("K2", pos=(80, 15))
-
-    for s in [S0, S1, S2]:
-        net.add_source(s)
+    K0 = Sink("K0", junction_id="J5", policy_id="counting", pos=(80, -15))
+    K1 = Sink("K1", junction_id="J5", policy_id="counting", pos=(80, 0))
+    K2 = Sink("K2", junction_id="J5", policy_id="counting", pos=(80, 15))
 
     for j in [J0, J1, J2, J3, J4, J5]:
         net.add_junction(j)
+
+    for s in [S0, S1, S2]:
+        net.add_source(s)
 
     for k in [K0, K1, K2]:
         net.add_sink(k)
 
     roads = [
-        Road("r_s0_j0", "S0", "J0", 10, 10, 1),
-        Road("r_s1_j2", "S1", "J2", 10, 10, 1),
-        Road("r_s2_j4", "S2", "J4", 10, 10, 1),
-
         Road("r_j0_j1", "J0", "J1", 10, 10, 1),
         Road("r_j1_j2", "J1", "J2", 10, 10, 1),
         Road("r_j2_j3", "J2", "J3", 10, 10, 1),
@@ -88,10 +85,6 @@ def setup(engine):
         Road("r_j2_j5", "J2", "J5", 10, 10, 1),
 
         Road("r_j1_j0", "J1", "J0", 10, 10, 1),
-
-        Road("r_j5_k0", "J5", "K0", 10, 10, 1),
-        Road("r_j5_k1", "J5", "K1", 10, 10, 1),
-        Road("r_j5_k2", "J5", "K2", 10, 10, 1),
     ]
 
     for r in roads:
@@ -120,6 +113,7 @@ def setup(engine):
     engine.add_policy("junction", RoundRobinJunctionPolicy())
     engine.add_policy("state", TrafficStatePolicy())
     engine.add_policy("transfer", TransferPolicy())
+    engine.add_policy("counting", CountingSinkPolicy())
 
     return net
 

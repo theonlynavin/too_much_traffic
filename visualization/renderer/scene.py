@@ -37,5 +37,18 @@ def draw_roads(ax, geometry, style):
 
 
 def draw_nodes(ax, geometry):
-    for pos in geometry["nodes"].values():
-        ax.scatter(pos[0], pos[1], s=40, color="black", zorder=3)
+    for nid, node in geometry["nodes"].items():
+        pos = node["pos"]
+        ntype = node["type"]
+        
+        if ntype == "junction":
+            marker, color, s = "o", "black", 40
+        elif ntype == "source":
+            marker, color, s = "P", "blue", 80 # Plus sign
+        elif ntype == "sink":
+            marker, color, s = "X", "red", 80 # Cross
+        else:
+            marker, color, s = "o", "gray", 40
+            
+        ax.scatter(pos[0], pos[1], s=s, marker=marker, color=color, zorder=3)
+        ax.text(pos[0] + 1, pos[1] + 1, nid, fontsize=8, color=color, fontweight='bold')

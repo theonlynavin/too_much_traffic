@@ -69,18 +69,18 @@ def build_geometry(network):
     roads = {}
 
     for jid, j in network.junctions.items():
-        nodes[jid] = j.pos
+        nodes[jid] = {"pos": j.pos, "type": "junction"}
 
     for sid, s in network.sources.items():
-        nodes[sid] = s.pos
+        nodes[sid] = {"pos": s.pos, "type": "source"}
 
     for sid, s in network.sinks.items():
-        nodes[sid] = s.pos
+        nodes[sid] = {"pos": s.pos, "type": "sink"}
 
     for rid, r in network.roads.items():
         roads[rid] = {
-            "start": nodes[r.start],
-            "end": nodes[r.end],
+            "start": nodes[r.start]["pos"],
+            "end": nodes[r.end]["pos"],
             "lanes": r.num_lanes,
             "capacity": r.capacity,
         }

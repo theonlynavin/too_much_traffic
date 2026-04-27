@@ -72,11 +72,11 @@ class MatplotlibRenderer:
             self.road_artists,
         )
 
-        xs = [p[0] for p in self.geometry["nodes"].values()]
-        ys = [p[1] for p in self.geometry["nodes"].values()]
+        xs = [n["pos"][0] for n in self.geometry["nodes"].values()]
+        ys = [n["pos"][1] for n in self.geometry["nodes"].values()]
 
-        self.ax.set_xlim(min(xs) - 5, max(xs) + 5)
-        self.ax.set_ylim(min(ys) - 5, max(ys) + 5)
+        self.ax.set_xlim(min(xs) - 10, max(xs) + 10)
+        self.ax.set_ylim(min(ys) - 10, max(ys) + 10)
         self.ax.set_aspect("equal")
 
     def animate(self):
