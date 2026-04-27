@@ -142,6 +142,14 @@ class TransferPolicy(Policy):
         final_t_end = trajectory[-1]["t_end"]
         engine.schedule(MoveEvent(final_t_end, vehicle.id, next_road.id, new_lane))
 
+        engine.emit({
+            "type": "transfer",
+            "vehicle_id": vehicle.id,
+            "junction_id": road.end,
+            "from_road": road.id,
+            "to_road": next_road.id
+        })
+
         engine.logger.log(
             LogLevel.INFO,
             src_event("move_event"),

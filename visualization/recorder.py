@@ -6,28 +6,28 @@ Notes:
 TODO:
 - FLAG: Missing to_dict/from_dict implementation.
 """
-from .timeline import EventLog, SegmentStore, MetricsCollector
+from .timeline import EventLog, SegmentStore
+from .metrics.metrics_manager import MetricsManager
 
 class Recorder:
     def __init__(self):
         self.events = EventLog()
         self.segments = SegmentStore()
 
-        self.metrics = []
+        self.metrics_manager = MetricsManager([])
 
         self.vehicle_dest = {}
         self.spawn_time = {}
         self.geometry = None
 
     def add_metric(self, metric):
-        self.metrics.append(metric)
+        self.metrics_manager.metrics.append(metric)
 
     def on_event(self, time, event):
         self.events.record(time, event)
 
         # metrics hook
-        for m in self.metrics:
-            m.on_event(time, event)
+        self.metrics_manager.on_event(time, event)
 
         etype = event.get("type")
 

@@ -31,6 +31,11 @@ from visualization.recorder import Recorder
 from visualization.renderer.matplotlib_renderer import MatplotlibRenderer
 
 
+from visualization.metrics.throughput_metric import ThroughputMetric
+from visualization.metrics.travel_time_metric import TravelTimeMetric
+from visualization.metrics.junction_flow_metric import JunctionFlowMetric
+
+
 def build_engine():
     rng = RNG(seed=42)
 
@@ -125,6 +130,12 @@ def seed(engine):
 def run(engine, network, until=10.0):
     recorder = Recorder()
     recorder.set_geometry(build_geometry(network))
+    
+    # Add metrics
+    recorder.add_metric(ThroughputMetric())
+    recorder.add_metric(TravelTimeMetric())
+    recorder.add_metric(JunctionFlowMetric())
+    
     engine.listeners.append(recorder)
     engine.run(until=until)
     return recorder
@@ -137,11 +148,20 @@ def main():
     network = setup(engine)
     seed(engine)
 
-    recorder = run(engine, network, until=30)
+    recorder = run(engine, network, until=100)
     engine.logger.log(LogLevel.INFO, src_system(), "simulation_done")
 
+    # Metrics reporting
+    recorder.metrics_manager.pretty_print()
+    recorder.metrics_manager.save_to_csv("metrics.csv")
+    recorder.metrics_manager.save_to_json("metrics.json")
+    recorder.metrics_manager.save_to_txt("metrics.log")
+    
+    print("Metrics saved to metrics.csv, metrics.json, and metrics.log")
+
     renderer = MatplotlibRenderer(timeline=recorder)
-    renderer.animate(show_labels=False, save_path="traffic.mp4", show_plot=True)
+    renderer.animate(show_labels=False, save_path="traffic.mp4", show_plot=False)
+
 
 
 if __name__ == "__main__":
