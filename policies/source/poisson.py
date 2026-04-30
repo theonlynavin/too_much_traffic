@@ -33,5 +33,9 @@ class PoissonSourcePolicy(SourcePolicy):
 
     @classmethod
     def from_dict(cls, data):
-        # NOTE: vehicle_factory must be reconstructed elsewhere or handled via registry
-        raise NotImplementedError("Requires factory reconstruction logic")
+        from io_system.serialization import deserialize_factory
+        factory = deserialize_factory(data["vehicle_factory"])
+        return cls(
+            rate=data["rate"],
+            vehicle_factory=factory
+        )

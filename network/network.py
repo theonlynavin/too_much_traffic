@@ -192,6 +192,7 @@ class Network:
             node, dest = k.split("|")
             rt[(node, dest)] = v
         obj.routing_table = rt
+        obj._built = True
         
         return obj
         

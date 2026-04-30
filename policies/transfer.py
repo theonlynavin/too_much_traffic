@@ -92,7 +92,10 @@ class TransferPolicy(Policy):
             engine.emit({
                 "type": "dropped",
                 "vehicle_id": vehicle.id,
-                "road_id": road.id
+                "road_id": road.id,
+                "destination": vehicle.destination,
+                "lane": lane,
+                "kind": vehicle.kind
             })
 
             engine.logger.log(
@@ -194,3 +197,10 @@ class TransferPolicy(Policy):
             j = engine.components.get(r.end)
             if j:
                 self._attempt_transfer(engine, j)
+
+    def to_dict(self):
+        return {"type": self.__class__.__name__}
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls()

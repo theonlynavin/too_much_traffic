@@ -99,3 +99,10 @@ class TrafficStatePolicy(Policy):
     def get_trajectory(self, engine, vehicle_id):
         key = f"trajectory:{vehicle_id}"
         return engine.state.get(key, [])
+
+    def to_dict(self):
+        return {"type": self.__class__.__name__}
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls()
