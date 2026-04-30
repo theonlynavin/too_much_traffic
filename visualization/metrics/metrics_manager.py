@@ -1,88 +1,66 @@
-import json
-import csv
+"""
+MetricsManager: pure orchestrator.
+
+Responsibilities:
+  - Fan engine events to all registered metrics.
+  - Build a section-grouped summary from metric.category declarations.
+  - Dispatch to any number of reporters.
+
+It knows NOTHING about formatting, file IO, or metric-specific categories.
+"""
+from collections import defaultdict
+
 
 class MetricsManager:
-    def __init__(self, metrics):
-        self.metrics = metrics
+    def __init__(self, metrics=None):
+        self.metrics = metrics or []
+
+    def add_metric(self, metric):
+        self.metrics.append(metric)
 
     def on_event(self, t, event):
         for m in self.metrics:
             m.on_event(t, event)
 
-    def summary(self):
-        out = {}
+    def reset(self):
         for m in self.metrics:
-            out.update(m.summary())
-        return out
+            m.reset()
+
+    def sections(self) -> dict:
+        """
+        Build a section-grouped summary from all metrics.
+        Each metric's `category` attribute determines the section name.
+        Returns: dict[section_name, dict[key, value]]
+        """
+        grouped = defaultdict(dict)
+        for m in self.metrics:
+            section = getattr(m, "category", "General")
+            grouped[section].update(m.summary())
+        return dict(grouped)
+
+    def report(self, *reporters):
+        """Run one or more reporters against the current metric data."""
+        data = self.sections()
+        for reporter in reporters:
+            reporter.report(data)
+
+    # -------------------------------------------------------------------
+    # Convenience shorthands — these do NOT contain formatting logic,
+    # they just instantiate the appropriate reporter and delegate.
+    # -------------------------------------------------------------------
 
     def pretty_print(self):
-        s = self.summary()
-        
-        def print_section(title, data):
-            if not data:
-                return
-            print(f"\n--- {title} ---")
-            for k, v in sorted(data.items()):
-                if isinstance(v, float):
-                    print(f"{k:<25}: {v:>8.2f}")
-                else:
-                    print(f"{k:<25}: {v:>8}")
+        from .reporters import ConsoleReporter
+        self.report(ConsoleReporter())
 
-        print("\n" + "="*40)
-        print(" " * 10 + "SIMULATION METRICS SUMMARY")
-        print("="*40)
+    def save_to_json(self, path):
+        from .reporters import JsonReporter
+        self.report(JsonReporter(path))
 
-        # Grouping
-        totals = {k: v for k, v in s.items() if "sink_" not in k and "source_" not in k and "junction_" not in k}
-        junctions = {k: v for k, v in s.items() if "junction_" in k}
-        sources = {k: v for k, v in s.items() if "source_" in k}
-        sinks = {k: v for k, v in s.items() if "sink_" in k}
+    def save_to_csv(self, path):
+        from .reporters import CsvReporter
+        self.report(CsvReporter(path))
 
-        print_section("GENERAL", totals)
-        print_section("JUNCTION FLOWS", junctions)
-        print_section("SOURCE STATS", sources)
-        print_section("SINK STATS", sinks)
-        
-        print("\n" + "="*40 + "\n")
-
-    def save_to_csv(self, filename):
-        s = self.summary()
-        with open(filename, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(["Metric", "Value"])
-            for k, v in s.items():
-                writer.writerow([k, v])
-
-    def save_to_json(self, filename):
-        s = self.summary()
-        with open(filename, 'w') as f:
-            json.dump(s, f, indent=4)
-
-    def save_to_txt(self, filename):
-        s = self.summary()
-        with open(filename, 'w') as f:
-            f.write("="*40 + "\n")
-            f.write(" " * 10 + "SIMULATION METRICS SUMMARY\n")
-            f.write("="*40 + "\n")
-            
-            def write_section(title, data):
-                if not data:
-                    return
-                f.write(f"\n--- {title} ---\n")
-                for k, v in sorted(data.items()):
-                    if isinstance(v, float):
-                        f.write(f"{k:<25}: {v:>8.2f}\n")
-                    else:
-                        f.write(f"{k:<25}: {v:>8}\n")
-
-            totals = {k: v for k, v in s.items() if "sink_" not in k and "source_" not in k and "junction_" not in k}
-            junctions = {k: v for k, v in s.items() if "junction_" in k}
-            sources = {k: v for k, v in s.items() if "source_" in k}
-            sinks = {k: v for k, v in s.items() if "sink_" in k}
-
-            write_section("GENERAL", totals)
-            write_section("JUNCTION FLOWS", junctions)
-            write_section("SOURCE STATS", sources)
-            write_section("SINK STATS", sinks)
-            
-            f.write("\n" + "="*40 + "\n")
+    def save_to_txt(self, path):
+        from .reporters import TextReporter
+        self.report(TextReporter(path))

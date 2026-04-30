@@ -1,51 +1,63 @@
 from .metric import Metric
+from collections import defaultdict
 
 
 class TravelTimeMetric(Metric):
-    def __init__(self):
-        self.spawn_info = {} # vid -> (time, source_id)
-        self.total_time = 0.0
-        self.completed = 0
-        
-        self.source_stats = {} # source_id -> {'total_time': 0.0, 'completed': 0}
+    """Tracks per-vehicle travel time from spawn to exit."""
+    category = "Travel Time"
+
+    def __init__(self, name=None):
+        super().__init__(name or "TravelTimeMetric")
+        self.spawn_info = {}  # vid -> (spawn_time, source_id, destination)
+        self.travel_times = []  # all completed travel times
+        self.source_stats = defaultdict(lambda: {"total_time": 0.0, "count": 0, "min": float("inf"), "max": 0.0})
+        self.destination_stats = defaultdict(lambda: {"total_time": 0.0, "count": 0})
+
+    def reset(self):
+        self.spawn_info.clear()
+        self.travel_times.clear()
+        self.source_stats.clear()
+        self.destination_stats.clear()
 
     def on_event(self, t, event):
-        etype = event["type"]
+        etype = event.get("type")
 
         if etype == "spawn":
             vid = event["vehicle_id"]
-            sid = event["source_id"]
-            self.spawn_info[vid] = (t, sid)
+            self.spawn_info[vid] = (t, event.get("source_id"), event.get("destination"))
 
         elif etype == "exit":
             vid = event["vehicle_id"]
-
             if vid in self.spawn_info:
-                t0, sid = self.spawn_info[vid]
+                t0, src, dest = self.spawn_info.pop(vid)
                 dt = t - t0
-                self.total_time += dt
-                self.completed += 1
-                
-                if sid not in self.source_stats:
-                    self.source_stats[sid] = {'total_time': 0.0, 'completed': 0}
-                
-                self.source_stats[sid]['total_time'] += dt
-                self.source_stats[sid]['completed'] += 1
+                self.travel_times.append(dt)
+
+                st = self.source_stats[src]
+                st["total_time"] += dt
+                st["count"] += 1
+                st["min"] = min(st["min"], dt)
+                st["max"] = max(st["max"], dt)
+
+                self.destination_stats[dest]["total_time"] += dt
+                self.destination_stats[dest]["count"] += 1
 
     def summary(self):
-        avg = (
-            self.total_time / self.completed
-            if self.completed > 0 else 0.0
-        )
+        n = len(self.travel_times)
+        avg = sum(self.travel_times) / n if n > 0 else 0.0
+        mn = min(self.travel_times) if n > 0 else 0.0
+        mx = max(self.travel_times) if n > 0 else 0.0
 
         res = {
-            "completed": self.completed,
-            "avg_travel_time": avg
+            "vehicle_completed_trips": n,
+            "vehicle_avg_travel_time": round(avg, 4),
+            "vehicle_min_travel_time": round(mn, 4),
+            "vehicle_max_travel_time": round(mx, 4),
         }
-        
-        for sid, stats in self.source_stats.items():
-            s_avg = stats['total_time'] / stats['completed'] if stats['completed'] > 0 else 0.0
-            res[f"source_{sid}_completed"] = stats['completed']
-            res[f"source_{sid}_avg_time"] = s_avg
-            
+        for src, st in self.source_stats.items():
+            c = st["count"]
+            a = st["total_time"] / c if c > 0 else 0.0
+            res[f"source_{src}_avg_travel_time"] = round(a, 4)
+            res[f"source_{src}_min_travel_time"] = round(st["min"] if c > 0 else 0.0, 4)
+            res[f"source_{src}_max_travel_time"] = round(st["max"], 4)
         return res
