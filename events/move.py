@@ -3,11 +3,12 @@ Notes:
 - Core logic for vehicle movement and junction transfers
 - Handles routing, lane selection, and exit logic
 """
-from core.event import Event
+from core.event import Event, EventRegistry
 from core.logger import LogLevel
 from core.log_src import src_event
 
 
+@EventRegistry.register
 class MoveEvent(Event):
     type = "move_event"
 

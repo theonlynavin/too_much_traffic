@@ -8,15 +8,17 @@ TODO:
 from core.logger import LogLevel
 from core.log_src import src_engine, src_system
 from core.state_store import StateStore
+from engine.event_queue import EventQueue
 
 class Engine:
     def __init__(self, rng, logger):
         self.time = 0.0
-        self.queue = None
+        self.queue = EventQueue()
         self.components = {}
         self.policies = {}
         self.rng = rng
         self.logger = logger
+        self.logger.set_clock(self)
         self.network = None
         self.listeners = []
         self.state = StateStore()
@@ -32,6 +34,10 @@ class Engine:
         
     def set_network(self, network):
         self.network = network
+
+    def add_listener(self, listener):
+        """Register an observer that will receive all emitted events."""
+        self.listeners.append(listener)
 
     def add_component(self, component):
         if component.id in self.components:
@@ -74,13 +80,6 @@ class Engine:
         )
 
     def schedule(self, event):
-        if self.queue is None:
-            self.logger.log(
-                LogLevel.ERROR,
-                src_engine(),
-                "event_queue_missing"
-            )
-            raise RuntimeError("Event queue not set")
 
         if event.time < self.time:
             self.logger.log(
@@ -108,14 +107,6 @@ class Engine:
             until=until
         )
 
-        if self.queue is None:
-            self.logger.log(
-                LogLevel.ERROR,
-                src_engine(),
-                "event_queue_missing"
-            )
-            raise RuntimeError("Event queue not set")
-
         # Execution loop: time jumps directly to the next event time
         while not self.queue.is_empty():
             event = self.queue.pop()
@@ -126,7 +117,6 @@ class Engine:
 
             # Time advancement happens ONLY here
             self.time = event.time
-            self.logger.set_time(self.time)
 
             self.logger.log(
                 LogLevel.DEBUG,

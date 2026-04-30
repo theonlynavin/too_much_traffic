@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 
 class StateStore:
     def __init__(self):
@@ -20,3 +20,23 @@ class StateStore:
 
     def subscribe(self, key, policy_name, hook_method):
         self._subscribers[key].append((policy_name, hook_method))
+
+    def to_dict(self):
+        # Convert deques to lists for JSON serialization
+        serializable_state = {}
+        for k, v in self._state.items():
+            if isinstance(v, deque):
+                serializable_state[k] = {"__type__": "deque", "data": list(v)}
+            else:
+                serializable_state[k] = v
+        return serializable_state
+
+    @classmethod
+    def from_dict(cls, data):
+        obj = cls()
+        for k, v in data.items():
+            if isinstance(v, dict) and v.get("__type__") == "deque":
+                obj._state[k] = deque(v["data"])
+            else:
+                obj._state[k] = v
+        return obj

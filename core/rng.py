@@ -59,20 +59,8 @@ class RNG:
     def weighted_choice(self, items, weights):
         if len(items) != len(weights):
             raise ValueError("items and weights must match")
-
-        total = sum(weights)
-        if total <= 0:
-            raise ValueError("weights must be positive")
-
-        r = self._rng.uniform(0, total)
-        acc = 0.0
-
-        for item, w in zip(items, weights):
-            acc += w
-            if r <= acc:
-                return item
-
-        return items[-1]
+        
+        return self._rng.choices(items, weights=weights, k=1)[0]
 
     def weighted_choice_dict(self, d):
         if not d:
@@ -98,6 +86,12 @@ class RNG:
 
     @classmethod
     def from_dict(cls, data):
+        def list_to_tuple(item):
+            if isinstance(item, list):
+                return tuple(list_to_tuple(x) for x in item)
+            return item
+
         obj = cls(0)
-        obj.set_state(data["state"])
+        state = list_to_tuple(data["state"])
+        obj.set_state(state)
         return obj

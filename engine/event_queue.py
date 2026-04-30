@@ -26,6 +26,17 @@ class EventQueue:
 
     def to_dict(self):
         return {
-            "events": [e.to_dict() for _, _, e in self._heap],
+            "events": [(t, c, e.to_dict()) for t, c, e in self._heap],
             "counter": self._counter,
         }
+
+    @classmethod
+    def from_dict(cls, data):
+        from core.event import EventRegistry
+        obj = cls()
+        obj._heap = []
+        for t, c, e_dict in data["events"]:
+            event = EventRegistry.from_dict(e_dict)
+            heapq.heappush(obj._heap, (t, c, event))
+        obj._counter = data["counter"]
+        return obj

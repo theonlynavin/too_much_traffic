@@ -7,12 +7,13 @@ TODO:
 - FLAG: Missing from_dict implementation.
 - Consider moving spawning logic to a dedicated Spawner component.
 """
-from core.event import Event
+from core.event import Event, EventRegistry
 from core.logger import LogLevel
 from core.log_src import src_event
 from events.move import MoveEvent
 
 
+@EventRegistry.register
 class SpawnEvent(Event):
     type = "spawn_event"
 
@@ -125,6 +126,16 @@ class SpawnEvent(Event):
             )
 
         else:
+
+            engine.emit({
+                "type": "dropped",
+                "vehicle_id": vid,
+                "source_id": source.id,
+                "road_id": road.id,
+                "destination": vehicle.destination,
+                "kind": vehicle.kind
+            })
+
             engine.logger.log(
                 LogLevel.WARN,
                 src_event(self.type),

@@ -1,12 +1,23 @@
-"""
-Notes:
-- Events are the only active units in the system
-- Event type must be stable and ASCII-only
+class EventRegistry:
+    _registry = {}
 
-TODO:
-- FLAG: All subclasses must implement from_dict for full serialization support.
-- Implement registry for type to class mapping
-"""
+    @classmethod
+    def register(cls, event_cls):
+        cls._registry[event_cls.type] = event_cls
+        return event_cls
+
+    @classmethod
+    def get_class(cls, event_type):
+        return cls._registry.get(event_type)
+
+    @classmethod
+    def from_dict(cls, data):
+        event_type = data.get("type")
+        event_cls = cls.get_class(event_type)
+        if event_cls is None:
+            raise ValueError(f"Unknown event type: {event_type}")
+        return event_cls.from_dict(data)
+
 class Event:
     type = "base_event"
 
@@ -28,4 +39,4 @@ class Event:
 
     @classmethod
     def from_dict(cls, data):
-        raise NotImplementedError
+        return EventRegistry.from_dict(data)
