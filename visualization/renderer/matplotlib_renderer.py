@@ -23,10 +23,12 @@ PLAYBACK_SPEED = 1
 
 class MatplotlibRenderer:
     def __init__(self, timeline):
+        plt.style.use('ggplot')
+
         self.timeline = timeline
         self.geometry = timeline.geometry
 
-        self.fig, self.ax = plt.subplots()
+        self.fig, self.ax = plt.subplots(figsize=(12, 12), dpi=150)
 
         self.motion = MotionModel(timeline.segments.segments)
         self.style = Style()
@@ -35,7 +37,7 @@ class MatplotlibRenderer:
 
         self._draw_scene()
 
-        self.markers = {"car": "o", "truck": "s", "bus": "D", "motorcycle": "^"}
+        self.markers = {"car": "o", "truck": "s", "bus": "D", "bike": "^"}
         self.vehicle_scatters = {}
         for kind, marker in self.markers.items():
             self.vehicle_scatters[kind] = self.ax.scatter([], [], s=80, marker=marker, zorder=5)
@@ -45,6 +47,7 @@ class MatplotlibRenderer:
             [], [], s=140, facecolors='none', edgecolors='red', linewidths=2, zorder=6
         )
         self.vehicle_labels = {}
+        
 
     def _build_meta(self):
         meta = {"dest": {}, "spawn": {}, "exit": {}, "kind": {}, "rgba": {}}
@@ -93,6 +96,8 @@ class MatplotlibRenderer:
 
         def update(frame):
             t = frame / FRAME_RATE * PLAYBACK_SPEED
+            self.ax.set_title(f"t = {t:.1f} s")
+
             state = self.motion.state_at(t)
             road_loads = self.road_state.loads_from_state(state, self.meta["exit"], t)
             self.road_overlay.update(road_loads)
@@ -183,7 +188,8 @@ class MatplotlibRenderer:
         frames = int(t_max * FRAME_RATE / PLAYBACK_SPEED)
 
         anim = FuncAnimation(self.fig, update, frames=frames, interval=30)
-        
+        self.ax.invert_yaxis()
+
         if save_path:
             print(f"Rendering {frames} frames to {save_path}...")
             anim.save(save_path, writer="ffmpeg", fps=FRAME_RATE)

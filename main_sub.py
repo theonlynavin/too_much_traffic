@@ -47,41 +47,73 @@ def build_engine():
 def setup(engine):
     net = Network()
 
-    S0 = Source("S0", junction_id="J0", policy_id="poisson", pos=(0, 2))
-    S1 = Source("S1", junction_id="J2", policy_id="poisson", pos=(2, 2))
-    S2 = Source("S2", junction_id="J4", policy_id="poisson", pos=(0, -2))
+    S1 = Source("S1", junction_id="J1", policy_id="poisson", pos=(-2, -2))
+    S2 = Source("S2", junction_id="J5", policy_id="poisson", pos=(-2, -2))
+    S3 = Source("S3", junction_id="J8", policy_id="poisson", pos=(2, -2))
+    S4 = Source("S4", junction_id="J1", policy_id="poisson", pos=(-2, 2))
+    S5 = Source("S5", junction_id="J5", policy_id="poisson", pos=(-2, 2))
 
-    J0 = Junction("J0", incoming=["r_j1_j0"], outgoing=["r_j0_j1", "r_j0_j3"], pos=(20, 10))
-    J1 = Junction("J1", incoming=["r_j0_j1"], outgoing=["r_j1_j2", "r_j1_j0"], pos=(40, 15))
-    J2 = Junction("J2", incoming=["r_j1_j2"], outgoing=["r_j2_j3", "r_j2_j5"], pos=(60, 10))
-    J3 = Junction("J3", incoming=["r_j0_j3", "r_j2_j3"], outgoing=["r_j3_j4"], pos=(40, 0))
-    J4 = Junction("J4", incoming=["r_j3_j4"], outgoing=["r_j4_j5"], pos=(20, -10))
-    J5 = Junction("J5", incoming=["r_j2_j5", "r_j4_j5"], outgoing=[], pos=(60, -10))
+    K1 = Sink("K1", junction_id="J12", policy_id="counting", pos=(2, -2))
+    K2 = Sink("K2", junction_id="J4", policy_id="counting", pos=(2, -2))
+    K3 = Sink("K3", junction_id="J9", policy_id="counting", pos=(-2, -2))
+    K4 = Sink("K4", junction_id="J9", policy_id="counting", pos=(-2, 2))
+    K5 = Sink("K5", junction_id="J12", policy_id="counting", pos=(2, 2))
 
-    K0 = Sink("K0", junction_id="J5", policy_id="counting", pos=(2, -2))
-    K1 = Sink("K1", junction_id="J4", policy_id="counting", pos=(0, 2))
-    K2 = Sink("K2", junction_id="J3", policy_id="counting", pos=(2, -2))
+    J1 = Junction("J1", incoming=["r_j2_j1"], outgoing=["r_j1_j2"], pos=(0, 0))
+    J2 = Junction("J2", incoming=["r_j1_j2", "r_j3_j2", "r_j6_j2"], outgoing=["r_j2_j1", "r_j2_j3", "r_j2_j6"], pos=(20, 0))
+    J3 = Junction("J3", incoming=["r_j2_j3", "r_j4_j3", "r_j7_j3"], outgoing=["r_j3_j2", "r_j3_j4", "r_j3_j7"], pos=(40, 0))
+    J4 = Junction("J4", incoming=["r_j3_j4"], outgoing=["r_j4_j3"], pos=(60, 0))
 
-    for j in [J0, J1, J2, J3, J4, J5]:
+    J5 = Junction("J5", incoming=["r_j6_j5"], outgoing=["r_j5_j6"], pos=(0, 20))
+    J6 = Junction("J6", incoming=["r_j5_j6", "r_j7_j6", "r_j10_j6"], outgoing=["r_j6_j5", "r_j6_j7", "r_j6_j10"], pos=(20, 20))
+    J7 = Junction("J7", incoming=["r_j6_j7", "r_j8_j7", "r_j11_j7"], outgoing=["r_j7_j6", "r_j7_j8", "r_j7_j11"], pos=(40, 20))
+    J8 = Junction("J8", incoming=["r_j7_j8"], outgoing=["r_j8_j7"], pos=(60, 20))
+
+    J9 = Junction("J9", incoming=["r_j10_j9"], outgoing=["r_j9_j10"], pos=(0, 40))
+    J10 = Junction("J10", incoming=["r_j9_j10", "r_j11_j10", "r_j6_j10"], outgoing=["r_j10_j9", "r_j10_j11", "r_j10_j6"], pos=(20, 40))
+    J11 = Junction("J11", incoming=["r_j10_j11", "r_j12_j11", "r_j7_j11"], outgoing=["r_j11_j10", "r_j11_j12", "r_j11_j7"], pos=(40, 40))
+    J12 = Junction("J12", incoming=["r_j11_j12"], outgoing=["r_j12_j11"], pos=(60, 40))
+
+    for j in [J1, J2, J3, J4, J5, J6, J7, J8, J9, J10, J11, J12]:
         net.add_junction(j)
 
-    for s in [S0, S1, S2]:
+    for s in [S1, S2, S3, S4, S5]:
         net.add_source(s)
 
-    for k in [K0, K1, K2]:
+    for k in [K1, K2, K3, K4, K5]:
         net.add_sink(k)
 
     roads = [
-        Road("r_j0_j1", "J0", "J1", 10, 20, 2),
         Road("r_j1_j2", "J1", "J2", 10, 10, 1),
+        Road("r_j2_j1", "J2", "J1", 10, 10, 1),
         Road("r_j2_j3", "J2", "J3", 10, 10, 1),
-        Road("r_j0_j3", "J0", "J3", 10, 10, 1),
-
+        Road("r_j3_j2", "J3", "J2", 10, 10, 1),   
         Road("r_j3_j4", "J3", "J4", 10, 10, 1),
-        Road("r_j4_j5", "J4", "J5", 10, 30, 3),
-        Road("r_j2_j5", "J2", "J5", 10, 20, 2),
+        Road("r_j4_j3", "J4", "J3", 10, 10, 1),
 
-        Road("r_j1_j0", "J1", "J0", 10, 10, 1),
+        Road("r_j5_j6", "J5", "J6", 10, 10, 1),
+        Road("r_j6_j5", "J6", "J5", 10, 10, 1),   
+        Road("r_j6_j7", "J6", "J7", 10, 10, 1),
+        Road("r_j7_j6", "J7", "J6", 10, 10, 1),
+        Road("r_j7_j8", "J7", "J8", 10, 10, 1),
+        Road("r_j8_j7", "J8", "J7", 10, 10, 1),
+
+        Road("r_j9_j10", "J9", "J10", 10, 10, 1),
+        Road("r_j10_j9", "J10", "J9", 10, 10, 1),
+        Road("r_j10_j11", "J10", "J11", 10, 10, 1),
+        Road("r_j11_j10", "J11", "J10", 10, 10, 1),
+        Road("r_j11_j12", "J11", "J12", 10, 10, 1),
+        Road("r_j12_j11", "J12", "J11", 10, 10, 1),
+
+        Road("r_j2_j6", "J2", "J6", 10, 10, 1),
+        Road("r_j6_j2", "J6", "J2", 10, 10, 1),
+        Road("r_j3_j7", "J3", "J7", 10, 10, 1),
+        Road("r_j7_j3", "J7", "J3", 10, 10, 1),
+
+        Road("r_j6_j10", "J6", "J10", 10, 10, 1),
+        Road("r_j10_j6", "J10", "J6", 10, 10, 1),
+        Road("r_j7_j11", "J7", "J11", 10, 10, 1),
+        Road("r_j11_j7", "J11", "J7", 10, 10, 1),
     ]
 
     for r in roads:
@@ -91,7 +123,7 @@ def setup(engine):
     engine.set_network(net)
 
     vehicle_factory = RandomVehicleFactory(
-        destinations=["K0", "K1", "K2"],
+        destinations=["K1", "K2", "K3", "K4", "K5"],
         kinds={
             "car": {"size": 2, "speed": 5.0},
             "truck": {"size": 4, "speed": 3.0},
@@ -140,7 +172,7 @@ def main():
     network = setup(engine)
     seed(engine)
 
-    recorder = run(engine, network, until=100)
+    recorder = run(engine, network, until=50)
     engine.logger.log(LogLevel.INFO, src_system(), "simulation_done")
 
     recorder.metrics_manager.pretty_print()
