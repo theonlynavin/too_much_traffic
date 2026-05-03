@@ -17,6 +17,7 @@ from components.junction import Junction
 from components.source import Source
 from components.sink import Sink
 from policies.source.poisson import PoissonSourcePolicy
+from policies.source.constant import ConstantSourcePolicy
 from policies.travel_time.free_flow import FreeFlowPolicy
 from policies.routing.shortest import ShortestPathRoutingPolicy
 from policies.lane.least_loaded import LeastLoadedLanePolicy
@@ -31,7 +32,7 @@ from visualization.recorder import Recorder
 from visualization.metrics import default_metrics
 
 def build_engine():
-    rng = RNG(seed=42)
+    rng = RNG(seed=33)
 
     from core.logger import Logger, ConsoleHandler, ColoredFormatter, LogLevel
     logger = Logger(keep_history=True)
@@ -49,7 +50,7 @@ def setup(engine):
 
     S1 = Source("S1", junction_id="J1", policy_id="poisson", pos=(-2, -2))
     S2 = Source("S2", junction_id="J5", policy_id="poisson", pos=(-2, -2))
-    S3 = Source("S3", junction_id="J8", policy_id="poisson", pos=(2, -2))
+    S3 = Source("S3", junction_id="J8", policy_id="constant", pos=(2, -2))
     S4 = Source("S4", junction_id="J1", policy_id="poisson", pos=(-2, 2))
     S5 = Source("S5", junction_id="J5", policy_id="poisson", pos=(-2, 2))
 
@@ -84,10 +85,10 @@ def setup(engine):
         net.add_sink(k)
 
     roads = [
-        Road("r_j1_j2", "J1", "J2", 10, 10, 1),
-        Road("r_j2_j1", "J2", "J1", 10, 10, 1),
-        Road("r_j2_j3", "J2", "J3", 10, 10, 1),
-        Road("r_j3_j2", "J3", "J2", 10, 10, 1),   
+        Road("r_j1_j2", "J1", "J2", 20, 10, 2),
+        Road("r_j2_j1", "J2", "J1", 20, 10, 2),
+        Road("r_j2_j3", "J2", "J3", 10, 10, 2),
+        Road("r_j3_j2", "J3", "J2", 10, 10, 2),   
         Road("r_j3_j4", "J3", "J4", 10, 10, 1),
         Road("r_j4_j3", "J4", "J3", 10, 10, 1),
 
@@ -101,19 +102,19 @@ def setup(engine):
         Road("r_j9_j10", "J9", "J10", 10, 10, 1),
         Road("r_j10_j9", "J10", "J9", 10, 10, 1),
         Road("r_j10_j11", "J10", "J11", 10, 10, 1),
-        Road("r_j11_j10", "J11", "J10", 10, 10, 1),
+        Road("r_j11_j10", "J11", "J10", 10, 30, 1),
         Road("r_j11_j12", "J11", "J12", 10, 10, 1),
         Road("r_j12_j11", "J12", "J11", 10, 10, 1),
 
         Road("r_j2_j6", "J2", "J6", 10, 10, 1),
         Road("r_j6_j2", "J6", "J2", 10, 10, 1),
-        Road("r_j3_j7", "J3", "J7", 10, 10, 1),
-        Road("r_j7_j3", "J7", "J3", 10, 10, 1),
+        Road("r_j3_j7", "J3", "J7", 10, 10, 3),
+        Road("r_j7_j3", "J7", "J3", 10, 10, 3),
 
-        Road("r_j6_j10", "J6", "J10", 10, 10, 1),
-        Road("r_j10_j6", "J10", "J6", 10, 10, 1),
-        Road("r_j7_j11", "J7", "J11", 10, 10, 1),
-        Road("r_j11_j7", "J11", "J7", 10, 10, 1),
+        Road("r_j6_j10", "J6", "J10", 10, 10, 2),
+        Road("r_j10_j6", "J10", "J6", 10, 10, 2),
+        Road("r_j7_j11", "J7", "J11", 20, 20, 2),
+        Road("r_j11_j7", "J11", "J7", 20, 20, 2),
     ]
 
     for r in roads:
@@ -134,6 +135,10 @@ def setup(engine):
     engine.add_policy(
         "poisson",
         PoissonSourcePolicy(rate=2.0, vehicle_factory=vehicle_factory)
+    )
+    engine.add_policy(
+        "constant",
+        ConstantSourcePolicy(rate=2.0, vehicle_factory=vehicle_factory)
     )
 
     engine.add_policy("routing", ShortestPathRoutingPolicy())
@@ -172,7 +177,7 @@ def main():
     network = setup(engine)
     seed(engine)
 
-    recorder = run(engine, network, until=50)
+    recorder = run(engine, network, until=90)
     engine.logger.log(LogLevel.INFO, src_system(), "simulation_done")
 
     recorder.metrics_manager.pretty_print()
@@ -184,7 +189,7 @@ def main():
 
     from visualization.renderer.matplotlib_renderer import MatplotlibRenderer
     renderer = MatplotlibRenderer(timeline=recorder)
-    renderer.animate(show_labels=False, save_path="traffic.mp4", show_plot=False)
+    renderer.animate(show_labels=False, save_path="traffic_multilane.mp4", show_plot=False)
 
 
 

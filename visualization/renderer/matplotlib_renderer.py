@@ -2,11 +2,8 @@
 Notes:
 - Animates simulation history using Matplotlib FuncAnimation
 - Handles spatial mapping, vehicle styling, and congestion overlays
-
-TODO:
-- FLAG: Active logic in animate() - complex state interpolation.
-- Add support for real-time (interactive) rendering.
 """
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
@@ -20,6 +17,7 @@ from .style import Style
 
 FRAME_RATE = 30
 PLAYBACK_SPEED = 1
+
 
 class MatplotlibRenderer:
     def __init__(self, timeline):
@@ -46,8 +44,10 @@ class MatplotlibRenderer:
         self.blocked_scatter = self.ax.scatter(
             [], [], s=140, facecolors='none', edgecolors='red', linewidths=2, zorder=6
         )
+
+        self.grouped_data = {k: {"x": [], "y": [], "c": [], "s": []} for k in self.vehicle_scatters}
+
         self.vehicle_labels = {}
-        
 
     def _build_meta(self):
         meta = {"dest": {}, "spawn": {}, "exit": {}, "kind": {}, "rgba": {}}
@@ -58,10 +58,8 @@ class MatplotlibRenderer:
                 meta["dest"][vid] = e["destination"]
                 meta["spawn"][vid] = t
                 meta["kind"][vid] = e.get("kind", "car")
-                
-                # Pre-calculate RGBA color
-                dest = e["destination"]
-                base_color = self.style.color(dest)
+
+                base_color = self.style.color(e["destination"])
                 meta["rgba"][vid] = plt.cm.colors.to_rgba(base_color)
 
             elif e["type"] == "exit":
@@ -72,6 +70,7 @@ class MatplotlibRenderer:
     def _draw_scene(self):
         self.road_artists = draw_roads(self.ax, self.geometry, self.style)
         draw_nodes(self.ax, self.geometry)
+
         self.road_overlay = RoadOverlay(
             self.ax,
             self.geometry,
@@ -93,45 +92,51 @@ class MatplotlibRenderer:
             return
 
         t_max = max(seg["t_end"] for seg in segments)
+        frames = int(t_max * FRAME_RATE / PLAYBACK_SPEED)
+        times = np.linspace(0, t_max, frames)
+
+        print("Renderer: Precomputing states...")
+        timeline_states = [self.motion.state_at(t) for t in times]
+        print("Done.")
 
         def update(frame):
-            t = frame / FRAME_RATE * PLAYBACK_SPEED
+            t = times[frame]
             self.ax.set_title(f"t = {t:.1f} s")
 
-            state = self.motion.state_at(t)
+            state = timeline_states[frame]
             road_loads = self.road_state.loads_from_state(state, self.meta["exit"], t)
             self.road_overlay.update(road_loads)
 
-            grouped_data = {k: {"x": [], "y": [], "c": [], "s": []} for k in self.vehicle_scatters}
+            grouped_data = self.grouped_data
+            for g in grouped_data.values():
+                g["x"].clear()
+                g["y"].clear()
+                g["c"].clear()
+                g["s"].clear()
+
             bx, by = [], []
             seen = set()
 
+            # -------- VEHICLES --------
             for vid, seg in state.items():
                 road = self.geometry["roads"][seg["road_id"]]
 
-                # Interpolate position along the road based on time
                 if t <= seg["t_end"]:
                     a0 = seg.get("alpha_start", 0.0)
                     a1 = seg.get("alpha_end", 1.0)
                     alpha = a0 + (t - seg["t_start"]) / max(1e-9, seg["t_end"] - seg["t_start"]) * (a1 - a0)
                 else:
-                    # Vehicle is blocked at the end of the segment (waiting for junction)
                     alpha = seg.get("alpha_end", 0.98)
 
                 x, y = road_to_world(road, seg["lane"], alpha)
-
-                # dest = self.meta["dest"].get(vid)
-                # base_color = self.style.color(dest)
 
                 size = 80
                 spawn_t = self.meta["spawn"].get(vid)
                 if spawn_t is not None and (t - spawn_t) < 0.5:
                     size = 200
 
-                # Exit effect: fade out vehicle markers over 0.5 seconds
                 alpha_val = 1.0
                 exit_t = self.meta["exit"].get(vid)
-
                 if exit_t is not None:
                     dt = t - exit_t
                     if 0 <= dt < 0.5:
@@ -139,7 +144,6 @@ class MatplotlibRenderer:
                     elif dt >= 0.5:
                         continue
 
-                # Blocked overlay: show a red circle if vehicle is stuck at junction
                 if t > seg["t_end"] and (t - seg["t_end"]) > 0.2:
                     bx.append(x)
                     by.append(y)
@@ -156,18 +160,7 @@ class MatplotlibRenderer:
                 rgba = self.meta["rgba"].get(vid, (0.5, 0.5, 0.5, 1.0))
                 grouped_data[kind]["c"].append((rgba[0], rgba[1], rgba[2], alpha_val))
 
-                if show_labels:
-                    label = self.vehicle_labels.get(vid)
-                    if label is None:
-                        label = self.ax.text(
-                            x + 0.25, y + 0.25, vid,
-                            fontsize=6, color='black', zorder=7
-                        )
-                        self.vehicle_labels[vid] = label
-                    else:
-                        label.set_position((x + 0.25, y + 0.25))
-                    label.set_visible(True)
-
+            # -------- DRAW VEHICLES --------
             for k, scatter in self.vehicle_scatters.items():
                 g_xs = grouped_data[k]["x"]
                 if g_xs:
@@ -181,13 +174,17 @@ class MatplotlibRenderer:
                 np.column_stack((bx, by)) if bx else np.empty((0, 2))
             )
 
-            for vid, label in self.vehicle_labels.items():
-                if vid not in seen:
-                    label.set_visible(False)
+            return list(self.vehicle_scatters.values()) + [self.blocked_scatter]
 
         frames = int(t_max * FRAME_RATE / PLAYBACK_SPEED)
 
-        anim = FuncAnimation(self.fig, update, frames=frames, interval=30)
+        anim = FuncAnimation(
+            self.fig,
+            update,
+            frames=frames,
+            interval=30,
+            blit=True
+        )        
         self.ax.invert_yaxis()
 
         if save_path:

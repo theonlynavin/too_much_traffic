@@ -40,5 +40,11 @@ class RoadOverlay:
             label = self.load_labels[rid]
             label.set_text(f"{load}/{cap}")
 
-            road_artist = self.road_artists[rid]
-            road_artist.set_color(self.style.road_color(load, cap))
+            artists = self.road_artists[rid]
+            base = artists["base"]
+            jam = artists["jam"]
+
+            if cap > 0 and load >= cap:
+                jam.set_alpha(1.0)
+            else:
+                jam.set_alpha(0.0)
