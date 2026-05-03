@@ -32,7 +32,7 @@ Users can define new policies in addition to the existing template policies.
 The Engine is the central orchestrator. it manages the global simulation clock, hosts the event queue, and maintains the registry of all components and policies.
 
 ### 5. Visualization
-These contain modules which given a timeline/record of events help in analyzing metrics or convert it to a viewable animation.
+These contain modules which given a timeline/record of events help in analyzing metrics or convert it to a viewable animation. Metrics can be presented as text, json or csv. Animation is presented as a mp4 file as well as a matplotlib window.
 
 ## Simulation Setup
 
@@ -50,9 +50,8 @@ To run a simulation, the user is responsible for defining:
 - **Head-of-Line Blocking**: Vehicles realistically slow down and bottleneck based on the motion of the vehicle immediately in front of them.
 - **Rendering**: An optimized motion interpolation model and Matplotlib-based renderer for generating MP4 visualization files.
 
-## Future Development
+## Future (Ongoing) Development
 
 - **Dynamic Re-routing**: Adjustment of vehicle paths based on live traffic congestion.
 - **Non-homogeneous Demand**: Time-varying vehicle arrival rates to simulate peak traffic periods.
 - **Full State Serialization**: Mechanisms to save and load the entire simulation state.
-- **Geometry Improvements**: Support for curvilinear road segments.
